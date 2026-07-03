@@ -8,7 +8,8 @@ defmodule SimplyPut.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      SimplyPut.Repo
+      SimplyPut.Repo,
+      {Oban, Application.fetch_env!(:simply_put, Oban)}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
