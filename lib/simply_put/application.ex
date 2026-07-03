@@ -9,7 +9,9 @@ defmodule SimplyPut.Application do
   def start(_type, _args) do
     children = [
       SimplyPut.Repo,
-      {Oban, Application.fetch_env!(:simply_put, Oban)}
+      {Oban, Application.fetch_env!(:simply_put, Oban)},
+      {Phoenix.PubSub, name: SimplyPut.PubSub},
+      SimplyPutWeb.Endpoint
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

@@ -9,4 +9,10 @@ config :simply_put, Oban,
   queues: [rewrites: 5],
   plugins: [{Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7}]
 
+config :simply_put, SimplyPutWeb.Endpoint,
+  pubsub_server: SimplyPut.PubSub,
+  live_view: [signing_salt: "sp_live_view_salt"]
+
+config :phoenix, :json_library, Jason
+
 import_config "#{config_env()}.exs"
