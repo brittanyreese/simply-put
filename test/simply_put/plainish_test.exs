@@ -4,6 +4,9 @@ defmodule SimplyPut.LLM.FailingStub do
 
   @impl true
   def rewrite(_text, _opts), do: {:error, :boom}
+
+  @impl true
+  def judge(_original, _rewrite), do: {:error, :boom}
 end
 
 defmodule SimplyPut.PlainishTest do
@@ -21,6 +24,22 @@ defmodule SimplyPut.PlainishTest do
     assert result.fk_after <= 6.0
     assert result.fk_before > result.fk_after
     assert result.attempts >= 1
+    assert result.verdict == nil
+  end
+
+  test "judge OFF (default) leaves the result byte-identical to the pre-judge path" do
+    refute Application.get_env(:simply_put, :deps, [])[:judge]
+
+    assert {:ok, %Result{verdict: nil}} = Plainish.run(@complex_fixture)
+    assert {:hold, %Result{verdict: nil}} = Plainish.run("Extraordinarily discombobulated.")
+  end
+
+  test "judge ON attaches a dual verdict via the stub judge" do
+    Application.put_env(:simply_put, :deps, judge: true)
+    on_exit(fn -> Application.delete_env(:simply_put, :deps) end)
+
+    assert {:ok, %Result{verdict: %{fk_pass: true, meaning_preserved: true}}} =
+             Plainish.run(@complex_fixture)
   end
 
   test "holds when the rewrite can't reach target within max_attempts" do

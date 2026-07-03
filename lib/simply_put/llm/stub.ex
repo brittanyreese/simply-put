@@ -40,6 +40,13 @@ defmodule SimplyPut.LLM.Stub do
     {:ok, rewritten}
   end
 
+  # ponytail: fixed verdict, no semantic comparison -- real judge lands in
+  # OpenRouter adapter (3.1); the stub just exercises the deps[:judge] seam.
+  @impl true
+  def judge(_original, _rewrite) do
+    {:ok, %{verdict: :preserved, rationale: "stub: no semantic check performed"}}
+  end
+
   defp swap_words(text) do
     Regex.replace(~r/\b\p{L}+\b/u, text, fn word ->
       Map.get(@synonyms, String.downcase(word), word)
