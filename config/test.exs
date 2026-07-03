@@ -5,3 +5,5 @@ config :simply_put, SimplyPut.Repo,
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: 5,
   log: false
+
+config :simply_put, Oban, testing: :manual
