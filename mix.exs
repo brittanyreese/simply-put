@@ -28,7 +28,12 @@ defmodule SimplyPut.MixProject do
       {:ecto_sql, "~> 3.14"},
       {:ecto_sqlite3, "~> 0.24"},
       {:nimble_csv, "~> 1.3"},
-      {:oban, "~> 2.23"}
+      {:oban, "~> 2.23"},
+      {:phoenix, "~> 1.8"},
+      {:phoenix_live_view, "~> 1.2"},
+      {:bandit, "~> 1.12"},
+      {:lazy_html, ">= 0.1.0", only: :test},
+      {:elixir_make, "~> 0.9 or ~> 0.10", override: true}
     ]
   end
 
