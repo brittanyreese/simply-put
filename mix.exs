@@ -24,13 +24,19 @@ defmodule SimplyPut.MixProject do
   defp deps do
     [
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:ecto_sql, "~> 3.14"},
+      {:ecto_sqlite3, "~> 0.24"},
+      {:nimble_csv, "~> 1.3"}
     ]
   end
 
   defp aliases do
     [
-      quality: ["format --check-formatted", "credo --strict", "compile --warnings-as-errors"]
+      quality: ["format --check-formatted", "credo --strict", "compile --warnings-as-errors"],
+      "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
+      "ecto.reset": ["ecto.drop", "ecto.setup"],
+      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"]
     ]
   end
 end
