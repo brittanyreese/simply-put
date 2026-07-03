@@ -9,6 +9,22 @@ defmodule SimplyPut.LLM.FailingStub do
   def judge(_original, _rewrite), do: {:error, :boom}
 end
 
+defmodule SimplyPut.LLM.CapturingStub do
+  @moduledoc false
+  @behaviour SimplyPut.LLM
+
+  alias SimplyPut.LLM.Stub
+
+  @impl true
+  def rewrite(text, opts) do
+    send(self(), {:rewrite_opts, opts})
+    Stub.rewrite(text, opts)
+  end
+
+  @impl true
+  def judge(original, rewrite), do: Stub.judge(original, rewrite)
+end
+
 defmodule SimplyPut.PlainishTest do
   use ExUnit.Case, async: true
 
@@ -57,5 +73,17 @@ defmodule SimplyPut.PlainishTest do
     on_exit(fn -> Application.delete_env(:simply_put, :llm) end)
 
     assert {:error, :boom} = Plainish.run("some text")
+  end
+
+  test "feeds a natural-language critique, not just the numeric grade, to the adapter" do
+    Application.put_env(:simply_put, :llm, SimplyPut.LLM.CapturingStub)
+    on_exit(fn -> Application.delete_env(:simply_put, :llm) end)
+
+    Plainish.run(@complex_fixture)
+
+    assert_received {:rewrite_opts, opts}
+    critique = Keyword.fetch!(opts, :critique)
+    assert critique =~ "Grade"
+    assert critique =~ "Preserve meaning"
   end
 end

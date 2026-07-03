@@ -53,7 +53,13 @@ defmodule SimplyPut.Plainish do
   end
 
   defp attempt(current_text, fk_before, target, max_attempts, attempt_number) do
-    case LLM.rewrite(current_text, target_grade: target, attempt: attempt_number) do
+    critique = Readability.critique(current_text, target)
+
+    case LLM.rewrite(current_text,
+           target_grade: target,
+           attempt: attempt_number,
+           critique: critique
+         ) do
       {:ok, rewritten} ->
         handle_rewrite(rewritten, fk_before, target, max_attempts, attempt_number)
 
