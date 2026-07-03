@@ -27,7 +27,8 @@ defmodule SimplyPut.MixProject do
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:ecto_sql, "~> 3.14"},
       {:ecto_sqlite3, "~> 0.24"},
-      {:nimble_csv, "~> 1.3"}
+      {:nimble_csv, "~> 1.3"},
+      {:oban, "~> 2.23"}
     ]
   end
 
