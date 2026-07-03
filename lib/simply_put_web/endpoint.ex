@@ -8,10 +8,12 @@ defmodule SimplyPutWeb.Endpoint do
     same_site: "Lax"
   ]
 
-  socket("/live", Phoenix.LiveView.Socket,
-    websocket: [connect_info: [session: @session_options]],
-    longpoll: [connect_info: [session: @session_options]]
-  )
+  # No auth/session data is read inside any LiveView, so the socket
+  # doesn't need connect_info: [session: ...] -- that mechanism requires
+  # a session cookie to already exist, which a plain `fetch_session`
+  # (no `put_session`) never sets, and LiveView rejects the mount as
+  # "stale" when it's configured but comes back nil on connect.
+  socket("/live", Phoenix.LiveView.Socket, websocket: true, longpoll: true)
 
   # Serve the pre-built LiveView client JS straight out of the hex
   # packages -- no npm, no esbuild, no asset pipeline.
