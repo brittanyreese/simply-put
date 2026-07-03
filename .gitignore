@@ -25,6 +25,11 @@ simply_put-*.tar
 # Temporary files, for e.g. tests
 /tmp/
 
+# SQLite databases (dev/test, local runtime state -- not source)
+*.db
+*.db-shm
+*.db-wal
+
 # Phoenix assets (esbuild/tailwind pipeline, if used)
 /assets/node_modules/
 /priv/static/assets/
