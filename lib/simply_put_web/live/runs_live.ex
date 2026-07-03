@@ -59,8 +59,8 @@ defmodule SimplyPutWeb.RunsLive do
 
     <div class="histogram">
       <div :for={{label, {passed, held}} <- @histogram} class="bar">
-        <span class="held-part" style={"height: #{held * 4}px"}></span>
-        <span class="passed-part" style={"height: #{passed * 4}px"}></span>
+        <span class="held-part" style={"height: #{bar_height(held, @histogram)}px"}></span>
+        <span class="passed-part" style={"height: #{bar_height(passed, @histogram)}px"}></span>
         <div class="label">{label}</div>
       </div>
     </div>
@@ -148,4 +148,17 @@ defmodule SimplyPutWeb.RunsLive do
 
   defp bucket_label({low, 999}), do: "#{low}+"
   defp bucket_label({low, high}), do: "#{low}-#{high}"
+
+  @max_bar_px 100
+
+  # Scales a bar segment to fit the fixed-height .histogram container
+  # (see layouts.ex) -- raw counts * a fixed px multiplier overflowed the
+  # container once any bucket held more than ~30 items.
+  defp bar_height(count, histogram) do
+    stack_max =
+      histogram |> Map.values() |> Enum.map(fn {p, h} -> p + h end) |> Enum.max(fn -> 1 end)
+
+    scale = if stack_max > 0, do: @max_bar_px / stack_max, else: 0
+    Float.round(count * scale, 1)
+  end
 end
