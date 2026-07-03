@@ -40,6 +40,66 @@ defmodule SimplyPut.Readability do
     :ok
   end
 
+  @doc """
+  Natural-language critique for the next rewrite attempt: concrete FK-derived
+  problems plus a standing anti-gaming clause, not just the numeric grade.
+
+  Grounding (docs/plans/public-demo-repo/research/methodology-grounding-brief.md):
+  iterative-refinement literature (Reflexion, Self-Refine) finds actionable
+  natural-language feedback outperforms a bare scalar for steering the next
+  attempt. The anti-gaming clause guards against retrying purely against the
+  FK score, a documented failure mode (Tanprasert & Kauchak, 2021) since FK
+  rewards shortcuts (dropped content, undefined abbreviations) that lower the
+  number without preserving meaning.
+  """
+  @spec critique(String.t(), float()) :: String.t()
+  def critique(text, target_grade) do
+    grade = flesch_kincaid(text)
+    {longest, longest_count} = longest_sentence(text)
+    hardest = hardest_words(text, 3)
+
+    sentence_note =
+      if longest_count > 20 do
+        "Longest sentence has #{longest_count} words (\"#{truncate(longest)}\") -- split it."
+      else
+        "Sentence length looks fine."
+      end
+
+    word_note =
+      if hardest == [] do
+        "No standout hard words."
+      else
+        "Hardest words: #{Enum.join(hardest, ", ")} -- use shorter synonyms."
+      end
+
+    "Grade #{Float.round(grade, 1)}, target #{target_grade}. #{sentence_note} #{word_note} " <>
+      "Preserve meaning: do not drop content, do not remove definitions of " <>
+      "technical terms, do not replace words with undefined abbreviations " <>
+      "just to shorten them."
+  end
+
+  defp longest_sentence(text) do
+    text
+    |> sentences()
+    |> Enum.map(fn s -> {String.trim(s), length(words(s))} end)
+    |> Enum.max_by(fn {_s, count} -> count end, fn -> {"", 0} end)
+  end
+
+  defp hardest_words(text, n) do
+    text
+    |> words()
+    |> Enum.uniq_by(&String.downcase/1)
+    |> Enum.map(fn w -> {w, syllables(w)} end)
+    |> Enum.filter(fn {_w, syl} -> syl >= 3 end)
+    |> Enum.sort_by(fn {_w, syl} -> -syl end)
+    |> Enum.take(n)
+    |> Enum.map(fn {w, _syl} -> w end)
+  end
+
+  defp truncate(s, max \\ 60) do
+    if String.length(s) > max, do: String.slice(s, 0, max) <> "...", else: s
+  end
+
   defp words(text) do
     String.split(text, ~r/[^\p{L}'-]+/u, trim: true)
   end

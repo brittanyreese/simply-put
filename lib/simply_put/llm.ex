@@ -4,6 +4,12 @@ defmodule SimplyPut.LLM do
   a fresh clone with no API key. Default impl is `SimplyPut.LLM.Stub`.
   """
 
+  @doc """
+  `opts` carries `:target_grade`, `:attempt`, and `:critique` -- a short
+  natural-language critique of `text` against the target (see
+  `SimplyPut.Readability.critique/2`). A real adapter should fold the
+  critique into its prompt; the stub adapter may ignore it.
+  """
   @callback rewrite(text :: String.t(), opts :: keyword()) ::
               {:ok, String.t()} | {:error, term()}
   @callback judge(original :: String.t(), rewrite :: String.t()) ::
