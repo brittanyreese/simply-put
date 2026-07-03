@@ -15,7 +15,7 @@ defmodule SimplyPut.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger],
+      extra_applications: [:logger, :inets, :ssl],
       mod: {SimplyPut.Application, []}
     ]
   end
@@ -26,6 +26,7 @@ defmodule SimplyPut.MixProject do
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:ecto_sql, "~> 3.14"},
+      {:jason, "~> 1.4"},
       {:ecto_sqlite3, "~> 0.24"},
       {:nimble_csv, "~> 1.3"},
       {:oban, "~> 2.23"},
