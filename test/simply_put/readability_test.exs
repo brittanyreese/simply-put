@@ -38,4 +38,31 @@ defmodule SimplyPut.ReadabilityTest do
     grade = Readability.flesch_kincaid("this is a test with no punctuation at all")
     assert is_float(grade)
   end
+
+  describe "critique/2" do
+    test "always includes the anti-gaming clause" do
+      critique = Readability.critique("The cat sat on the mat.", 6.0)
+      assert critique =~ "Preserve meaning"
+      assert critique =~ "do not drop content"
+    end
+
+    test "flags a long sentence for splitting" do
+      long = String.duplicate("word ", 25) <> "."
+      critique = Readability.critique(long, 6.0)
+      assert critique =~ "split it"
+    end
+
+    test "flags hard words by syllable count" do
+      critique =
+        Readability.critique("The multifaceted organization facilitated understanding.", 6.0)
+
+      assert critique =~ "Hardest words"
+    end
+
+    test "reports no issues for short, simple text" do
+      critique = Readability.critique("The cat sat on the mat.", 6.0)
+      assert critique =~ "Sentence length looks fine"
+      assert critique =~ "No standout hard words"
+    end
+  end
 end
