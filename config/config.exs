@@ -10,6 +10,7 @@ config :simply_put, Oban,
   plugins: [{Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7}]
 
 config :simply_put, SimplyPutWeb.Endpoint,
+  adapter: Bandit.PhoenixAdapter,
   pubsub_server: SimplyPut.PubSub,
   live_view: [signing_salt: "sp_live_view_salt"]
 
