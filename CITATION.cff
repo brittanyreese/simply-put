@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use Simply Put in your work, please cite it as below."
+title: "Simply Put: a plain-language readability rig with a deterministic gate and dual-model judge"
+abstract: >-
+  Plainish rewrites text to plain language through an agentic pipeline gated
+  by a public, reproducible Flesch-Kincaid score, with an opt-in dual-model
+  LLM judge for meaning-preservation and an Oban batch + LiveView dashboard
+  for before/after reading-level tracking.
+type: software
+authors:
+  - given-names: Brittany Reese
+    family-names: Markides
+    orcid: "https://orcid.org/0000-0001-6242-0842"
+version: 0.1.0
+license: MIT
+repository-code: "https://github.com/brittanyreese/simply-put"
+url: "https://github.com/brittanyreese/simply-put"
+keywords:
+  - elixir
+  - phoenix
+  - llm
+  - readability
+  - flesch-kincaid
+  - agentic-pipeline
+  - oban
+  - liveview
