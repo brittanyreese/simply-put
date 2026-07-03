@@ -18,20 +18,22 @@ defmodule SimplyPut.RewriteWorker do
   alias SimplyPut.Repo
   alias SimplyPut.RunResult
 
+  @topic "runs"
+
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"corpus_item_id" => corpus_item_id}}) do
     item = Repo.get!(CorpusItem, corpus_item_id)
 
     case Plainish.run(item.source_text) do
-      {:ok, result} -> write_result(item.id, result)
-      {:hold, result} -> write_result(item.id, result)
+      {:ok, result} -> write_result(item, result)
+      {:hold, result} -> write_result(item, result)
       {:error, reason} -> {:error, reason}
     end
   end
 
-  defp write_result(corpus_item_id, result) do
+  defp write_result(item, result) do
     attrs = %{
-      corpus_item_id: corpus_item_id,
+      corpus_item_id: item.id,
       status: result.status,
       fk_before: result.fk_before,
       fk_after: result.fk_after,
@@ -50,8 +52,24 @@ defmodule SimplyPut.RewriteWorker do
       conflict_target: :corpus_item_id
     )
     |> case do
-      {:ok, _run_result} -> :ok
-      {:error, changeset} -> {:error, changeset}
+      {:ok, run_result} ->
+        broadcast(item, run_result)
+        :ok
+
+      {:error, changeset} ->
+        {:error, changeset}
     end
+  end
+
+  defp broadcast(item, run_result) do
+    row = %{
+      id: run_result.id,
+      title: item.title,
+      fk_before: run_result.fk_before,
+      fk_after: run_result.fk_after,
+      status: run_result.status
+    }
+
+    Phoenix.PubSub.broadcast(SimplyPut.PubSub, @topic, {:run_completed, row})
   end
 end
