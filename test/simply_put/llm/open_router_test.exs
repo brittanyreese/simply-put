@@ -11,7 +11,7 @@ defmodule SimplyPut.LLM.OpenRouterTest do
     Application.put_env(:simply_put, OpenRouter,
       api_key: api_key,
       rewrite_model: System.get_env("OPENROUTER_REWRITE_MODEL", "openai/gpt-4o-mini"),
-      judge_model: System.get_env("OPENROUTER_JUDGE_MODEL", "anthropic/claude-3-5-haiku")
+      judge_model: System.get_env("OPENROUTER_JUDGE_MODEL", "anthropic/claude-haiku-4.5")
     )
 
     :ok

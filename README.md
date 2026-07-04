@@ -120,9 +120,36 @@ The judge step is a second, separate model call that checks whether a
 rewrite dropped a fact the original had. It's opt-in (`deps[:judge]`,
 default off) and, when enabled, deliberately uses a different model
 vendor than the rewriter (`openai/gpt-4o-mini` rewrites,
-`anthropic/claude-3-5-haiku` judges by default, both configurable via env
+`anthropic/claude-haiku-4.5` judges by default, both configurable via env
 var). A judge from the same vendor family as the rewriter rates its own
 output more favorably, so the two are kept apart on purpose.
+
+### Live sample
+
+A 20-item run against the real OpenRouter adapter, judge on, rewriter
+`openai/gpt-4o-mini` and judge `anthropic/claude-haiku-4.5`:
+
+| | |
+|---|---|
+| Total | 20 |
+| Passed (FK gate) | 20 (100%) |
+| Held | 0 |
+| Average grade, before | 2.64 |
+| Average grade, after | 2.19 |
+| Average attempts | 1.0 |
+| Judge: meaning preserved | 8 (40%) |
+| Judge: meaning lost | 12 (60%) |
+
+This sample is the first 20 corpus rows by id, not a random draw. It lands
+far easier (average grade 2.64) than the full 200-item corpus (average
+9.53), so the FK numbers aren't comparable to the stub table above.
+
+Read it for what it actually shows: the gate and the judge disagree.
+Every one of these 20 passed the FK gate on the first attempt, and the
+judge still called 60% of them meaning-lost. Passing the gate means a
+rewrite is short enough. It says nothing about whether the rewrite kept
+the original's facts. That gap is why the judge step exists as a second,
+independent check on the gate.
 
 ```
 OPENROUTER_API_KEY=sk-... mix test --only live
