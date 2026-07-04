@@ -67,7 +67,8 @@ defmodule SimplyPut.RewriteWorker do
       title: item.title,
       fk_before: run_result.fk_before,
       fk_after: run_result.fk_after,
-      status: run_result.status
+      status: run_result.status,
+      verdict: run_result.verdict
     }
 
     Phoenix.PubSub.broadcast(SimplyPut.PubSub, @topic, {:run_completed, row})
