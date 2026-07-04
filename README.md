@@ -1,25 +1,168 @@
-# SimplyPut
+<!-- vale ai-tells.RestatementMarkers = NO -->
+# Simply Put
+<!-- vale ai-tells.RestatementMarkers = YES -->
 
-A plain-language readability rig. Rewrites text through an agentic pipeline
-gated by a public, reproducible Flesch-Kincaid score.
+A plain-language readability rig. Text goes in, a rewrite comes out at or
+below a target reading grade, and the claim is checked by a pure function
+you can read yourself, not by trusting a model's word for it.
 
-Full README (architecture, demo, metrics) lands once the vertical slice is
-green.
+## The claim, and how to check it
 
-## Installation
+Clone it, run two commands, and the suite goes green without any
+credentials or database setup.
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `simply_put` to your list of dependencies in `mix.exs`:
+```
+git clone <this-repo> simply_put && cd simply_put
+mix deps.get && mix test
+```
+
+That runs a real rewrite pipeline against the deterministic Flesch-Kincaid
+gate below, using a stub adapter (no network calls), and comes back green:
+1 doctest, 28 tests, 0 failures. Two live-API tests are tagged `:live` and
+excluded by default; run them with `mix test --only live` (see
+[Judge and the real adapter](#judge-and-the-real-adapter)).
+
+## Architecture
+
+The shape is a firewall chain, not a prompt. One drafter call feeds a
+deterministic gate, and the gate doesn't take the drafter's word for it.
+A failed gate check gets fed back as the next prompt's feedback, using the
+gate's own numbers.
+
+```
+text
+  │
+  ├─ Readability.flesch_kincaid/1     score before        (pure, public)
+  ├─ LLM.rewrite/2                    ONE model call       (adapter seam: Stub | OpenRouter)
+  ├─ Readability.flesch_kincaid/1     score after           (pure, public)
+  │
+  ├─ score <= target? ──yes──> :passed
+  │        │no
+  │        └─ attempts < max? ──yes──> Readability.critique/2 feeds the miss
+  │        │                           back into the next rewrite call
+  │        └─ no ──> :held (never a silent skip)
+  │
+  └─ (optional) LLM.judge/2           meaning-preserved check
+       enabled only via deps[:judge]; two different model vendors on
+       purpose, so a judge never grades its own rewriter's homework
+```
+
+Every stage returns an explicit result. Nothing gets dropped quietly: a
+rewrite that never gets under the target grade comes back `:held`, with the
+before/after numbers attached, not swallowed into a generic error.
+
+## The trust anchor
+
+The gate is the part a reviewer shouldn't have to take on faith, so it's
+plain Elixir, no dependency, and short enough to read in one sitting
+(`lib/simply_put/readability.ex`):
 
 ```elixir
-def deps do
-  [
-    {:simply_put, "~> 0.1.0"}
-  ]
+@spec flesch_kincaid(String.t()) :: float()
+def flesch_kincaid(text) when is_binary(text) do
+  words = words(text)
+  word_count = length(words)
+
+  if word_count == 0 do
+    0.0
+  else
+    sentence_count = text |> sentences() |> length() |> max(1)
+    syllable_count = Enum.reduce(words, 0, fn word, acc -> acc + syllables(word) end)
+
+    0.39 * (word_count / sentence_count) + 11.8 * (syllable_count / word_count) - 15.59
+  end
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/simply_put>.
+`Readability.demo/0` is a self-check with a hand-traceable example: 10
+monosyllabic words across 2 sentences must score `-1.84`. Run it yourself
+in `iex -S mix`.
 
+## Honest metrics
+
+The numbers below come from running the full pipeline against 200 real
+excerpts from the [CommonLit CLEAR
+Corpus](https://huggingface.co/datasets/casey-martin/CommonLit-Ease-of-Readability)
+(licensed passages, grade range -1.0 to 25.6, seeded via `priv/repo/seeds.exs`),
+processed through `Oban` and shown live on the `/runs` dashboard as each
+one completes.
+
+| | |
+|---|---|
+| Total | 200 |
+| Passed (FK gate) | 187 (93.5%) |
+| Held (max attempts hit) | 13 (6.5%) |
+| Average grade, before | 9.53 |
+| Average grade, after | 3.77 |
+| Average attempts | 1.24 |
+
+This run used the stub adapter (synonym swap + sentence splitting, no
+network calls) with the judge seam off, which is the default and the
+green-clone path above. Look at the held bucket before the pass rate: all
+13 hit the 3-attempt cap, and all 13 started as the hardest source texts in
+the sample (grade 12.5-19.0). They land close to the target but not under
+it. A synonym swap can shorten a sentence; it can't restructure an idea the
+way a real model can. Raising that ceiling is what the OpenRouter adapter
+below is for.
+
+The Flesch-Kincaid gate checks sentence and word length, not whether a
+rewrite is actually easier to understand. It's a verifiable proxy, not a
+comprehension test.
+
+## Judge and the real adapter
+
+`SimplyPut.LLM.OpenRouter` follows the same adapter behaviour as the
+stub, but calls OpenRouter's chat completions API for real. It's selected only when
+`OPENROUTER_API_KEY` is set (`config/runtime.exs`); without a key the
+Stub stays the default, so the green-clone path is unaffected.
+
+The judge step is a second, separate model call that checks whether a
+rewrite dropped a fact the original had. It's opt-in (`deps[:judge]`,
+default off) and, when enabled, deliberately uses a different model
+vendor than the rewriter (`openai/gpt-4o-mini` rewrites,
+`anthropic/claude-3-5-haiku` judges by default, both configurable via env
+var). A judge from the same vendor family as the rewriter rates its own
+output more favorably, so the two are kept apart on purpose.
+
+```
+OPENROUTER_API_KEY=sk-... mix test --only live
+```
+
+## Running it live
+
+```
+mix ecto.setup                 # creates the SQLite db, seeds the corpus
+mix phx.server                 # http://localhost:4000/runs
+```
+
+In another shell, enqueue the batch and watch the dashboard fill in as
+each job completes:
+
+```
+mix run -e "SimplyPut.Batch.enqueue_all()"
+```
+
+The `/runs` view streams the result table (SQLite via `Oban.Engines.Lite`,
+no Postgres needed to try this locally) and subscribes to PubSub only after
+the socket connects, so nothing queries the database during disconnected
+mount.
+
+## Why SQLite
+
+The one value this repo cares about is a stranger cloning it and getting
+to green without installing anything first. Postgres would break
+that. `ecto_sqlite3` plus `Oban.Engines.Lite` keeps a real database and a
+real background-job story without asking a reviewer to stand up a server.
+Swapping to Postgres later is one dependency and one config block, not a
+rewrite.
+
+## What this repo is not
+
+It's a capability demo, not a production deployment. `/runs` is the only
+page, and it's read-only: a single view over a seeded corpus and its batch
+results. The pass/held numbers above are specific to this stub run on this
+corpus sample. They aren't a claim about any other engagement or dataset.
+
+## License
+
+MIT. See `LICENSE`. Citation metadata in `CITATION.cff`.
