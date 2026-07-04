@@ -144,7 +144,7 @@ This sample is the first 20 corpus rows by id, not a random draw. It lands
 far easier (average grade 2.64) than the full 200-item corpus (average
 9.53), so the FK numbers aren't comparable to the stub table above.
 
-Read it for what it actually shows: the gate and the judge disagree.
+Read it for what it shows: the gate and the judge disagree.
 Every one of these 20 passed the FK gate on the first attempt, and the
 judge still called 60% of them meaning-lost. Passing the gate means a
 rewrite is short enough. It says nothing about whether the rewrite kept
