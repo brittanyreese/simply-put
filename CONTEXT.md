@@ -19,9 +19,9 @@ Single-context repo. Domain vocabulary and decisions live here and in
   count"), fed into the next rewrite attempt's prompt.
 - **Passed**: gate score at or under `target_grade` on some attempt within
   `max_attempts`.
-- **Held**: attempts exhausted, still over target. Not an error, not a
-  silent drop: the result carries the before/after numbers so a caller can
-  see how close it got. Never call this "failed."
+- **Held**: attempts ran out while the text was still over target. The
+  result keeps the before/after numbers, so a caller can see how close it
+  got instead of hitting a silent drop. Never call this "failed."
 - **Judge**: a second, separate model call (`LLM.judge/2`) that checks
   whether a rewrite dropped a fact the original had. Opt-in
   (`deps[:judge]`, default off). Produces a `verdict`, not a `score`: a

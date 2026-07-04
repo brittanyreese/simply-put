@@ -25,5 +25,5 @@ install or run.
 - Swapping to Postgres later is one dependency and one config block
   (`config/runtime.exs`), not a rewrite. The schema and worker code never
   name SQLite.
-- Not a decision to avoid Postgres in production use of this pattern; it's
-  scoped to this repo's purpose as a clone-and-run demo.
+- This choice is scoped to the repo's purpose as a clone-and-run demo, not
+  a stance against Postgres for production use of this pattern.
