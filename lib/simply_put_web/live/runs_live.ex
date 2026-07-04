@@ -13,7 +13,7 @@ defmodule SimplyPutWeb.RunsLive do
   alias SimplyPut.RunResult
 
   @topic "runs"
-  @buckets [{0, 2}, {2, 4}, {4, 6}, {6, 8}, {8, 10}, {10, 999}]
+  @buckets [{-999, 0}, {0, 2}, {2, 4}, {4, 6}, {6, 8}, {8, 10}, {10, 999}]
 
   @impl true
   def mount(_params, _session, socket) do
@@ -146,6 +146,7 @@ defmodule SimplyPutWeb.RunsLive do
     Enum.find(@buckets, List.last(@buckets), fn {low, high} -> grade >= low and grade < high end)
   end
 
+  defp bucket_label({-999, 0}), do: "<0"
   defp bucket_label({low, 999}), do: "#{low}+"
   defp bucket_label({low, high}), do: "#{low}-#{high}"
 

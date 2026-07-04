@@ -64,7 +64,12 @@ defmodule SimplyPut.LLM.OpenRouter do
     body = Jason.encode!(%{model: model, messages: [%{role: "user", content: prompt}]})
     headers = [{~c"authorization", String.to_charlist("Bearer " <> config(:api_key))}]
 
-    case :httpc.request(:post, {@endpoint, headers, ~c"application/json", body}, [], []) do
+    case :httpc.request(
+           :post,
+           {@endpoint, headers, ~c"application/json", body},
+           http_options(),
+           []
+         ) do
       {:ok, {{_, 200, _}, _headers, resp_body}} ->
         extract_content(resp_body)
 
@@ -74,6 +79,20 @@ defmodule SimplyPut.LLM.OpenRouter do
       {:error, reason} ->
         {:error, reason}
     end
+  end
+
+  # :httpc does not verify TLS certs unless told to -- without this, the
+  # Bearer token above would go out over a connection that accepts any
+  # certificate, which is exploitable by an active MITM.
+  defp http_options do
+    [
+      ssl: [
+        verify: :verify_peer,
+        cacerts: :public_key.cacerts_get(),
+        customize_hostname_check: [match_fun: :public_key.pkix_verify_hostname_match_fun(:https)]
+      ],
+      timeout: 30_000
+    ]
   end
 
   defp extract_content(resp_body) do
