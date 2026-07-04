@@ -72,6 +72,7 @@ defmodule SimplyPutWeb.RunsLive do
           <th>Grade before</th>
           <th>Grade after</th>
           <th>Status</th>
+          <th>Meaning</th>
         </tr>
       </thead>
       <tbody id="runs-body" phx-update="stream">
@@ -80,6 +81,7 @@ defmodule SimplyPutWeb.RunsLive do
           <td>{Float.round(row.fk_before, 1)}</td>
           <td>{Float.round(row.fk_after, 1)}</td>
           <td class={to_string(row.status)}>{row.status}</td>
+          <td class={verdict_class(row)}>{verdict_label(row)}</td>
         </tr>
       </tbody>
     </table>
@@ -96,10 +98,36 @@ defmodule SimplyPutWeb.RunsLive do
         title: c.title,
         fk_before: r.fk_before,
         fk_after: r.fk_after,
-        status: r.status
+        status: r.status,
+        verdict: r.verdict
       }
     )
     |> Repo.all()
+  end
+
+  # Judge is opt-in (`deps[:judge]`, default off) -- most rows have no
+  # verdict. `Map.get/2` (not dot-access) so rows from before this column
+  # existed (e.g. broadcast payloads in tests) don't raise KeyError.
+  defp verdict_label(row) do
+    case meaning_preserved(Map.get(row, :verdict)) do
+      true -> "preserved"
+      false -> "lost"
+      nil -> "-"
+    end
+  end
+
+  defp verdict_class(row) do
+    case meaning_preserved(Map.get(row, :verdict)) do
+      true -> "preserved"
+      false -> "lost"
+      nil -> ""
+    end
+  end
+
+  defp meaning_preserved(nil), do: nil
+
+  defp meaning_preserved(verdict) do
+    Map.get(verdict, :meaning_preserved, Map.get(verdict, "meaning_preserved"))
   end
 
   defp assign_empty_summary(socket) do

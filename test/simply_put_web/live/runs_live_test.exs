@@ -17,7 +17,7 @@ defmodule SimplyPutWeb.RunsLiveTest do
     :ok
   end
 
-  defp insert_run_result!(title, status) do
+  defp insert_run_result!(title, status, verdict \\ nil) do
     item =
       %CorpusItem{}
       |> CorpusItem.changeset(%{title: title, source_text: "Text.", source_grade: 10.0})
@@ -31,7 +31,8 @@ defmodule SimplyPutWeb.RunsLiveTest do
       fk_after: 5.0,
       target: 6.0,
       attempts: 1,
-      text_out: "Text."
+      text_out: "Text.",
+      verdict: verdict
     })
     |> Repo.insert!()
 
@@ -59,5 +60,17 @@ defmodule SimplyPutWeb.RunsLiveTest do
 
     assert render(view) =~ "Live-Filled Story"
     assert render(view) =~ "held"
+  end
+
+  test "shows the judge verdict when present, and \"-\" when the judge is off" do
+    insert_run_result!("No Judge", :passed)
+    insert_run_result!("Preserved", :passed, %{fk_pass: true, meaning_preserved: true})
+    insert_run_result!("Lost Meaning", :held, %{fk_pass: false, meaning_preserved: false})
+
+    {:ok, _view, html} = live(build_conn(), "/runs")
+
+    assert html =~ "preserved"
+    assert html =~ "lost"
+    assert html =~ "-</td>"
   end
 end
