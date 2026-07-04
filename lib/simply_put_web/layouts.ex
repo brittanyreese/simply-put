@@ -16,6 +16,8 @@ defmodule SimplyPutWeb.Layouts do
           th, td { text-align: left; padding: 0.4rem 0.8rem; border-bottom: 1px solid #ddd; }
           .passed { color: #0a7a2f; font-weight: 600; }
           .held { color: #b3261e; font-weight: 600; }
+          .preserved { color: #0a7a2f; }
+          .lost { color: #b3261e; }
           .summary { display: flex; gap: 2rem; margin: 1rem 0; }
           .summary strong { display: block; font-size: 1.4rem; }
           .histogram { display: flex; align-items: flex-end; gap: 4px; height: 120px; margin: 1rem 0; }
