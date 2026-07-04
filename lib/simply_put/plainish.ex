@@ -4,6 +4,8 @@ defmodule SimplyPut.Plainish do
   hold, so there is no process (no process without a runtime reason).
   """
 
+  require Logger
+
   alias SimplyPut.LLM
   alias SimplyPut.Readability
 
@@ -106,7 +108,8 @@ defmodule SimplyPut.Plainish do
               }
           }
 
-        {:error, _reason} ->
+        {:error, reason} ->
+          Logger.warning("judge call failed, result has no verdict: #{inspect(reason)}")
           result
       end
     else
