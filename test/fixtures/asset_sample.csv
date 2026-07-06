@@ -1,0 +1,4 @@
+item_id,original,simplification,simplicity,fidelity,fluency,annotator
+asset-1,"The multifaceted organization facilitated understanding.","The group helped people understand.",4,5,4,worker-1
+asset-2,"Hypertension may precipitate complications.","High blood pressure can cause problems.",5,4,5,worker-1
+asset-3,"The biopsy indicated malignant cells.","The tissue test showed cancer cells.",3,5,4,worker-2
