@@ -34,7 +34,10 @@ defmodule SimplyPut.MixProject do
       {:phoenix_live_view, "~> 1.2"},
       {:bandit, "~> 1.12"},
       {:lazy_html, ">= 0.1.0", only: :test},
-      {:elixir_make, "~> 0.9 or ~> 0.10", override: true}
+      {:elixir_make, "~> 0.9 or ~> 0.10", override: true},
+      {:bumblebee, "~> 0.6"},
+      {:nx, "~> 0.9"},
+      {:exla, "~> 0.9"}
     ]
   end
 
