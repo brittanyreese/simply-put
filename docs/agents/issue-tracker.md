@@ -15,7 +15,7 @@ Infer the repo from `git remote -v`. `gh` does this automatically when run insid
 
 ## Pull requests as a triage surface
 
-**PRs as a request surface: no.**
+No.
 
 ## When a skill says "publish to the issue tracker"
 

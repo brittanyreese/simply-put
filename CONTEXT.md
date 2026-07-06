@@ -36,8 +36,8 @@ Single-context repo. Domain vocabulary and decisions live here and in
 - **Corpus item**: one seeded source text (`CorpusItem`) from the
   CommonLit CLEAR Corpus, the input side of a run.
 - **Run result**: one `Plainish.run/2` outcome persisted against a corpus
-  item (`RunResult`), append-only, upserted per `corpus_item_id` so a retry
-  replaces rather than duplicates.
+  item (`RunResult`), upserted per `corpus_item_id` so a retry replaces
+  rather than duplicates.
 - **Batch**: one `Batch.enqueue_all/1` fan-out, one `RewriteWorker` job
   per corpus item, all tagged with a shared `batch_id`.
 
