@@ -7,6 +7,9 @@ defmodule SimplyPut.LLM.FailingStub do
 
   @impl true
   def judge(_original, _rewrite), do: {:error, :boom}
+
+  @impl true
+  def score(_original, _rewrite), do: {:error, :boom}
 end
 
 defmodule SimplyPut.LLM.CapturingStub do
@@ -23,6 +26,12 @@ defmodule SimplyPut.LLM.CapturingStub do
 
   @impl true
   def judge(original, rewrite), do: Stub.judge(original, rewrite)
+
+  @impl true
+  def score(original, rewrite) do
+    send(self(), :score_called)
+    Stub.score(original, rewrite)
+  end
 end
 
 defmodule SimplyPut.PlainishTest do
@@ -85,5 +94,63 @@ defmodule SimplyPut.PlainishTest do
     critique = Keyword.fetch!(opts, :critique)
     assert critique =~ "Grade"
     assert critique =~ "Preserve meaning"
+  end
+
+  describe "run_mode :iterative (default)" do
+    test "gates each attempt on the structural gate before ever calling the judge" do
+      Application.put_env(:simply_put, :llm, SimplyPut.LLM.CapturingStub)
+      on_exit(fn -> Application.delete_env(:simply_put, :llm) end)
+
+      assert {:ok, %Result{status: :passed, gate_passed: true, judge_score: score}} =
+               Plainish.run(@complex_fixture)
+
+      assert %SimplyPut.JudgeScore{} = score
+      assert_received :score_called
+    end
+
+    test "gate hard-reject forces a retry, eventually passing once sentences are short enough" do
+      words =
+        ~w(happy little garden helpful morning gentle quiet lovely evening yellow simple pretty friendly careful joyful)
+
+      text = (words |> Enum.take(24) |> Enum.join(" ")) <> "."
+
+      assert {:ok, %Result{status: :passed, attempts: attempts, gate_passed: true}} =
+               Plainish.run(text, target_grade: 7.0)
+
+      assert attempts > 1
+    end
+  end
+
+  describe "run_mode :single_shot" do
+    test "makes exactly one attempt regardless of max_attempts, even when it fails" do
+      unreachable = "Extraordinarily discombobulated hippopotamuses perambulate philosophically."
+
+      assert {:hold, %Result{status: :held, attempts: 1, run_mode: :single_shot}} =
+               Plainish.run(unreachable, max_attempts: 3, run_mode: :single_shot)
+    end
+
+    test "can pass on the first and only attempt" do
+      assert {:ok, %Result{status: :passed, attempts: 1, run_mode: :single_shot}} =
+               Plainish.run(@complex_fixture, run_mode: :single_shot)
+    end
+  end
+
+  describe "run_mode :self_refine" do
+    test "never calls the external judge" do
+      Application.put_env(:simply_put, :llm, SimplyPut.LLM.CapturingStub)
+      on_exit(fn -> Application.delete_env(:simply_put, :llm) end)
+
+      assert {:ok, %Result{status: :passed, judge_score: nil, run_mode: :self_refine}} =
+               Plainish.run(@complex_fixture, run_mode: :self_refine)
+
+      refute_received :score_called
+    end
+
+    test "still retries against the deterministic gate and can hold" do
+      unreachable = "Extraordinarily discombobulated hippopotamuses perambulate philosophically."
+
+      assert {:hold, %Result{status: :held, judge_score: nil, run_mode: :self_refine}} =
+               Plainish.run(unreachable, max_attempts: 3, run_mode: :self_refine)
+    end
   end
 end

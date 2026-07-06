@@ -39,4 +39,16 @@ defmodule SimplyPut.LLM.OpenRouterTest do
     assert verdict in [:preserved, :lost]
     assert is_binary(rationale)
   end
+
+  test "score/2 returns a validated multi-axis JudgeScore" do
+    original = "The cat sat on the mat."
+    rewrite = "The cat sat on the mat."
+
+    assert {:ok, %SimplyPut.JudgeScore{simplicity: s, fidelity: f, fluency: fl}} =
+             OpenRouter.score(original, rewrite)
+
+    assert s in 1..5
+    assert f in 1..5
+    assert fl in 1..5
+  end
 end
