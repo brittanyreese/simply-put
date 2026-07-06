@@ -53,6 +53,45 @@ defmodule SimplyPut.LLM.OpenRouter do
     end
   end
 
+  @impl true
+  def score(original, rewrite) do
+    prompt = """
+    Score the REWRITE against the ORIGINAL on three axes, each 1 (worst) to \
+    5 (best): simplicity (how easy it is to read), fidelity (does it keep \
+    every fact, number, and defined term from the original), fluency (does \
+    it read naturally, not garbled or awkward). Reply with ONLY a JSON \
+    object, no preamble: {"simplicity": <1-5>, "fidelity": <1-5>, \
+    "fluency": <1-5>, "notes": "<one sentence>"}.
+
+    ORIGINAL:
+    #{original}
+
+    REWRITE:
+    #{rewrite}
+    """
+
+    with {:ok, content} <- request(config(:judge_model), prompt),
+         {:ok, json} <- extract_json_object(content),
+         {:ok, decoded} <- Jason.decode(json) do
+      SimplyPut.JudgeScore.parse(decoded)
+    end
+  end
+
+  # Pulls the first `{...}` object out of a judge response. Models wrap JSON in
+  # ```json fences or a preamble despite the "ONLY a JSON object" instruction;
+  # decoding the raw string then fails and silently burns a retry attempt. The
+  # `s` flag lets `.` span newlines so multi-line objects are captured. Public
+  # only so the non-live test suite can exercise it without a network call.
+  @doc false
+  @spec extract_json_object(String.t()) ::
+          {:ok, String.t()} | {:error, {:no_json_object, String.t()}}
+  def extract_json_object(content) do
+    case Regex.run(~r/\{.*\}/s, content) do
+      [json] -> {:ok, json}
+      nil -> {:error, {:no_json_object, content}}
+    end
+  end
+
   defp parse_verdict(content) do
     [first | rest] = content |> String.trim() |> String.split("\n", parts: 2)
     verdict = if String.downcase(String.trim(first)) == "preserved", do: :preserved, else: :lost

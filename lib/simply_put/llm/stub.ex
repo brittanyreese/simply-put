@@ -47,6 +47,16 @@ defmodule SimplyPut.LLM.Stub do
     {:ok, %{verdict: :preserved, rationale: "stub: no semantic check performed"}}
   end
 
+  @impl true
+  def score(_original, _rewrite) do
+    SimplyPut.JudgeScore.parse(%{
+      simplicity: 4,
+      fidelity: 5,
+      fluency: 4,
+      notes: "stub: no semantic check performed"
+    })
+  end
+
   defp swap_words(text) do
     Regex.replace(~r/\b\p{L}+\b/u, text, fn word ->
       Map.get(@synonyms, String.downcase(word), word)
