@@ -101,19 +101,110 @@ defmodule SimplyPut.Readability do
   end
 
   defp words(text) do
-    String.split(text, ~r/[^\p{L}'-]+/u, trim: true)
+    # Keep digits in the word class: FK and SMOG count numbers as words, and
+    # this corpus is number-heavy (doses, years). Drop tokens that are pure
+    # punctuation (a lone "-" left between spaces is not a word).
+    text
+    |> String.split(~r/[^\p{L}\p{N}'-]+/u, trim: true)
+    |> Enum.filter(&(&1 =~ ~r/[\p{L}\p{N}]/u))
   end
 
   defp sentences(text) do
-    String.split(text, ~r/[.!?]+/, trim: true)
+    # Only break on a terminator followed by whitespace or end-of-string, so a
+    # decimal ("3.5 mg") or "e.g." mid-token doesn't inflate the sentence count
+    # and deflate the FK grade. Not a full abbreviation-aware splitter.
+    String.split(text, ~r/[.!?]+(?=\s|$)/, trim: true)
   end
 
-  defp syllables(word) do
+  @doc """
+  Heuristic syllable count for a single word (vowel-group counting, no
+  CMUdict). Exposed so SMOG and other callers can reuse the same heuristic
+  `flesch_kincaid/1` uses internally.
+  """
+  @spec syllables(String.t()) :: pos_integer()
+  def syllables(word) do
     downcased = String.downcase(word)
     groups = ~r/[aeiouy]+/ |> Regex.scan(downcased) |> length()
 
     groups = if String.ends_with?(downcased, "e") and groups > 1, do: groups - 1, else: groups
 
     max(groups, 1)
+  end
+
+  @doc """
+  SMOG grade estimate.
+
+      SMOG grade = 1.0430 * sqrt(polysyllable_count * (30 / sentence_count)) + 3.1291
+
+  The published formula assumes a 30-sentence sample. Texts with fewer
+  sentences use all available sentences instead; the result is a rougher
+  estimate in that case, not a corrected small-sample formula.
+  """
+  @spec smog(String.t()) :: float()
+  def smog(text) when is_binary(text) do
+    sample = text |> sentences() |> Enum.take(30)
+    sentence_count = length(sample)
+
+    if sentence_count == 0 do
+      0.0
+    else
+      polysyllable_count =
+        sample
+        |> Enum.flat_map(&words/1)
+        |> Enum.count(&(syllables(&1) >= 3))
+
+      1.0430 * :math.sqrt(polysyllable_count * (30 / sentence_count)) + 3.1291
+    end
+  end
+
+  @doc """
+  Word count per sentence, in order. Used by `structural_gate/2` to flag
+  over-long sentences and available standalone for reporting.
+  """
+  @spec sentence_lengths(String.t()) :: [non_neg_integer()]
+  def sentence_lengths(text) when is_binary(text) do
+    text
+    |> sentences()
+    |> Enum.map(fn sentence -> sentence |> words() |> length() end)
+  end
+
+  @doc """
+  Hard deterministic gate, run before any judge call. A pass here doesn't
+  certify quality, it filters out candidates the judge should never have to
+  spend a call on: rejects on grade-band miss (FK grade more than 2 above
+  `target_grade`) or any sentence over 20 words.
+  """
+  @spec structural_gate(String.t(), number()) :: {:ok, []} | {:reject, [String.t()]}
+  def structural_gate(text, target_grade) when is_binary(text) do
+    reasons =
+      []
+      |> reject_grade_band(text, target_grade)
+      |> reject_long_sentences(text)
+
+    case reasons do
+      [] -> {:ok, []}
+      reasons -> {:reject, Enum.reverse(reasons)}
+    end
+  end
+
+  defp reject_grade_band(reasons, text, target_grade) do
+    grade = flesch_kincaid(text)
+    max_grade = target_grade + 2.0
+
+    if grade > max_grade do
+      reason =
+        "FK grade #{Float.round(grade, 1)} exceeds target band (target #{target_grade}, max #{max_grade})"
+
+      [reason | reasons]
+    else
+      reasons
+    end
+  end
+
+  defp reject_long_sentences(reasons, text) do
+    case Enum.filter(sentence_lengths(text), &(&1 > 20)) do
+      [] -> reasons
+      long -> ["#{length(long)} sentence(s) exceed 20 words" | reasons]
+    end
   end
 end
