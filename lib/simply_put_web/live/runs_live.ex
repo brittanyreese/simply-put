@@ -2,6 +2,13 @@ defmodule SimplyPutWeb.RunsLive do
   @moduledoc """
   Read-only `/runs` dashboard. Streams the batch table (>100 rows, Iron
   Law #2) and fills live as `RewriteWorker` broadcasts completions.
+
+  Each row also shows the most recent `rewrite_evaluations` axes
+  (simplicity/fidelity/fluency/run_mode) for that corpus item, when one
+  exists -- most historical runs predate the eval harness (Phase 1) and
+  have none, same fallback pattern already used for the judge verdict.
+  A run-mode comparison summary (count + mean FK-after per mode, across
+  all evaluations, not just one batch) sits above the table.
   """
 
   use Phoenix.LiveView
@@ -10,6 +17,7 @@ defmodule SimplyPutWeb.RunsLive do
 
   alias SimplyPut.CorpusItem
   alias SimplyPut.Repo
+  alias SimplyPut.RewriteEvaluation
   alias SimplyPut.RunResult
 
   @topic "runs"
@@ -21,7 +29,7 @@ defmodule SimplyPutWeb.RunsLive do
       Phoenix.PubSub.subscribe(SimplyPut.PubSub, @topic)
     end
 
-    {:ok, socket |> stream(:runs, []) |> assign_empty_summary()}
+    {:ok, socket |> stream(:runs, []) |> assign_empty_summary() |> assign(:run_mode_summary, %{})}
   end
 
   @impl true
@@ -32,6 +40,7 @@ defmodule SimplyPutWeb.RunsLive do
       socket
       |> stream(:runs, rows, reset: true)
       |> assign_summary(rows)
+      |> assign(:run_mode_summary, load_run_mode_summary())
 
     {:noreply, socket}
   end
@@ -65,6 +74,24 @@ defmodule SimplyPutWeb.RunsLive do
       </div>
     </div>
 
+    <table id="run-mode-summary">
+      <caption>Run-mode comparison (all evaluations, not one batch)</caption>
+      <thead>
+        <tr>
+          <th>Run mode</th>
+          <th>Items</th>
+          <th>Mean FK after</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr :for={{run_mode, summary} <- @run_mode_summary}>
+          <td>{run_mode}</td>
+          <td>{summary.count}</td>
+          <td>{format_avg(summary.avg_fk_after)}</td>
+        </tr>
+      </tbody>
+    </table>
+
     <table id="runs">
       <thead>
         <tr>
@@ -73,6 +100,10 @@ defmodule SimplyPutWeb.RunsLive do
           <th>Grade after</th>
           <th>Status</th>
           <th>Meaning</th>
+          <th>Simplicity</th>
+          <th>Fidelity</th>
+          <th>Fluency</th>
+          <th>Run mode</th>
         </tr>
       </thead>
       <tbody id="runs-body" phx-update="stream">
@@ -82,6 +113,10 @@ defmodule SimplyPutWeb.RunsLive do
           <td>{Float.round(row.fk_after, 1)}</td>
           <td class={to_string(row.status)}>{row.status}</td>
           <td class={verdict_class(row)}>{verdict_label(row)}</td>
+          <td>{axis_label(Map.get(row, :simplicity))}</td>
+          <td>{axis_label(Map.get(row, :fidelity))}</td>
+          <td>{axis_label(Map.get(row, :fluency))}</td>
+          <td>{run_mode_label(Map.get(row, :run_mode))}</td>
         </tr>
       </tbody>
     </table>
@@ -89,12 +124,15 @@ defmodule SimplyPutWeb.RunsLive do
   end
 
   defp load_rows do
+    evaluations_by_item = latest_evaluation_by_corpus_item()
+
     from(r in RunResult,
       join: c in CorpusItem,
       on: c.id == r.corpus_item_id,
       order_by: [desc: r.inserted_at],
       select: %{
         id: r.id,
+        corpus_item_id: r.corpus_item_id,
         title: c.title,
         fk_before: r.fk_before,
         fk_after: r.fk_after,
@@ -103,7 +141,54 @@ defmodule SimplyPutWeb.RunsLive do
       }
     )
     |> Repo.all()
+    |> Enum.map(fn row ->
+      Map.merge(row, Map.get(evaluations_by_item, row.corpus_item_id, empty_evaluation_fields()))
+    end)
   end
+
+  defp latest_evaluation_by_corpus_item do
+    RewriteEvaluation
+    |> Repo.all()
+    |> Enum.group_by(& &1.corpus_item_id)
+    |> Map.new(fn {corpus_item_id, evaluations} ->
+      latest = Enum.max_by(evaluations, & &1.inserted_at, NaiveDateTime)
+
+      {corpus_item_id,
+       %{
+         simplicity: latest.simplicity,
+         fidelity: latest.fidelity,
+         fluency: latest.fluency,
+         run_mode: latest.run_mode
+       }}
+    end)
+  end
+
+  defp empty_evaluation_fields, do: %{simplicity: nil, fidelity: nil, fluency: nil, run_mode: nil}
+
+  defp load_run_mode_summary do
+    RewriteEvaluation
+    |> Repo.all()
+    |> Enum.group_by(& &1.run_mode)
+    |> Map.new(fn {run_mode, rows} ->
+      # `&(&1.field / 100)` capture syntax mis-parses on this Elixir
+      # version (the "/100" reads as a function-arity marker, not
+      # division -- BadArityError, "arity 100"); use an explicit `fn`.
+      avg_fk = rows |> Enum.map(fn row -> row.fk_after_bp / 100 end) |> average()
+      {run_mode, %{count: length(rows), avg_fk_after: avg_fk}}
+    end)
+  end
+
+  defp average([]), do: nil
+  defp average(values), do: Enum.sum(values) / length(values)
+
+  defp format_avg(nil), do: "-"
+  defp format_avg(value), do: Float.round(value, 2)
+
+  defp axis_label(nil), do: "-"
+  defp axis_label(value), do: value
+
+  defp run_mode_label(nil), do: "-"
+  defp run_mode_label(run_mode), do: run_mode
 
   # Judge is opt-in (`deps[:judge]`, default off) -- most rows have no
   # verdict. `Map.get/2` (not dot-access) so rows from before this column
