@@ -16,4 +16,6 @@ config :simply_put, SimplyPutWeb.Endpoint,
 
 config :phoenix, :json_library, Jason
 
+config :nx, default_backend: EXLA.Backend
+
 import_config "#{config_env()}.exs"
