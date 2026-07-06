@@ -5,6 +5,7 @@ defmodule SimplyPut.RewriteWorkerTest do
   alias Ecto.Adapters.SQL.Sandbox
   alias SimplyPut.CorpusItem
   alias SimplyPut.Repo
+  alias SimplyPut.RewriteEvaluation
   alias SimplyPut.RewriteWorker
   alias SimplyPut.RunResult
 
@@ -44,5 +45,34 @@ defmodule SimplyPut.RewriteWorkerTest do
     assert :ok = perform_job(RewriteWorker, args)
 
     assert Repo.aggregate(RunResult, :count) == 1
+  end
+
+  test "also writes an append-only rewrite_evaluations row when batch_id is present" do
+    item = insert_corpus_item!()
+
+    assert :ok = perform_job(RewriteWorker, %{"corpus_item_id" => item.id, "batch_id" => "b1"})
+
+    assert %RewriteEvaluation{corpus_item_id: id, batch_id: "b1", run_mode: :iterative} =
+             Repo.get_by!(RewriteEvaluation, corpus_item_id: item.id)
+
+    assert id == item.id
+  end
+
+  test "retrying the same job appends a second rewrite_evaluations row (not upserted)" do
+    item = insert_corpus_item!()
+    args = %{"corpus_item_id" => item.id, "batch_id" => "b1"}
+
+    assert :ok = perform_job(RewriteWorker, args)
+    assert :ok = perform_job(RewriteWorker, args)
+
+    assert Repo.aggregate(RewriteEvaluation, :count) == 2
+  end
+
+  test "skips the rewrite_evaluations write when no batch_id is given" do
+    item = insert_corpus_item!()
+
+    assert :ok = perform_job(RewriteWorker, %{"corpus_item_id" => item.id})
+
+    assert Repo.aggregate(RewriteEvaluation, :count) == 0
   end
 end
