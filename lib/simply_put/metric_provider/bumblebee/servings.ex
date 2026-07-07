@@ -71,17 +71,36 @@ defmodule SimplyPut.MetricProvider.Bumblebee.Servings do
   def handle_call({:run, metric, input}, _from, servings) do
     case Map.fetch(servings, metric) do
       {:ok, serving} ->
-        {:reply, {:ok, Nx.Serving.run(serving, input)}, servings}
+        {:reply, safe_run(serving, input), servings}
 
       :error ->
-        case load_serving(metric) do
+        case safe_load(metric) do
           {:ok, serving} ->
-            {:reply, {:ok, Nx.Serving.run(serving, input)}, Map.put(servings, metric, serving)}
+            {:reply, safe_run(serving, input), Map.put(servings, metric, serving)}
 
           {:error, reason} ->
             {:reply, {:error, reason}, servings}
         end
     end
+  end
+
+  # Checkpoint load can raise (an incompatible tokenizer format, a 404 on a
+  # moved repo). Same rule as safe_run: degrade that one metric to {:error}
+  # rather than crash the GenServer and abort the batch.
+  defp safe_load(metric) do
+    load_serving(metric)
+  rescue
+    exception -> {:error, {:load_raised, Exception.message(exception)}}
+  end
+
+  # A serving that raises (bad input shape, OOM on one long row) must not take
+  # down the GenServer and abort a whole batch. Degrade that one call to
+  # {:error, _}, which every MetricProvider caller already handles by dropping
+  # the metric for that row.
+  defp safe_run(serving, input) do
+    {:ok, Nx.Serving.run(serving, input)}
+  rescue
+    exception -> {:error, {:serving_raised, Exception.message(exception)}}
   end
 
   defp load_serving(:summac) do
@@ -92,7 +111,11 @@ defmodule SimplyPut.MetricProvider.Bumblebee.Servings do
   end
 
   defp load_serving(:bertscore) do
-    with {:ok, model} <- Bumblebee.load_model(@bertscore_checkpoint),
+    # Load the base encoder, not the checkpoint's default masked-LM head:
+    # only the base architecture exposes the singular :hidden_state that
+    # mean-pooling needs. The LM head output map has :logits and :hidden_states
+    # (all layers), neither poolable here.
+    with {:ok, model} <- Bumblebee.load_model(@bertscore_checkpoint, architecture: :base),
          {:ok, tokenizer} <- Bumblebee.load_tokenizer(@bertscore_checkpoint) do
       {:ok,
        Bumblebee.Text.text_embedding(model, tokenizer,
