@@ -22,6 +22,23 @@ defmodule SimplyPut.Corpus.ImportTest do
     assert Enum.all?(items, &(&1.split in [:train, :dev, :test]))
   end
 
+  test "maps by header name, ignoring extra annotation columns" do
+    {:ok, 5} = Import.import_med_easi(@fixture)
+
+    item = Repo.get_by!(CorpusItem, title: "med_easi-med-1")
+    assert item.source_text =~ "contraindications"
+    assert item.reference_text =~ "blood-thinning"
+  end
+
+  test "rejects a file missing a required column" do
+    path = Path.join(System.tmp_dir!(), "med_easi_bad_#{System.unique_integer([:positive])}.csv")
+    File.write!(path, "Expert,idx\n\"only source\",med-1\n")
+    on_exit(fn -> File.rm(path) end)
+
+    assert {:error, {:missing_column, "Simple"}} = Import.import_med_easi(path)
+    assert Repo.aggregate(CorpusItem, :count) == 0
+  end
+
   test "split assignment for a given id is deterministic" do
     assert Import.split_for("med-1") == Import.split_for("med-1")
     assert Import.split_for("stable-id-42") == Import.split_for("stable-id-42")
