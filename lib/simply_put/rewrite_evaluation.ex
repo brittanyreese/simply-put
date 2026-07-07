@@ -34,6 +34,7 @@ defmodule SimplyPut.RewriteEvaluation do
     field(:fluency, :integer)
 
     field(:faithfulness_score, :decimal)
+    field(:omission_score, :decimal)
     field(:structural_gate_passed, :boolean)
     field(:attempts, :integer)
     field(:text_out, :string)
@@ -66,6 +67,7 @@ defmodule SimplyPut.RewriteEvaluation do
     :fidelity,
     :fluency,
     :faithfulness_score,
+    :omission_score,
     :generator_model,
     :judge_model,
     :faithfulness_provider
