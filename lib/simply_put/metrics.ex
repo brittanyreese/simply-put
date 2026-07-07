@@ -44,16 +44,16 @@ defmodule SimplyPut.Metrics do
   end
 
   @doc """
-  Whether `text`'s FK and SMOG grades both fall within `{min_grade,
-  max_grade}` (inclusive) -- e.g. `grade_band_compliance(text, {6.0, 8.0})`
-  for a 6th-8th grade band.
+  Whether `text`'s Flesch-Kincaid grade is at or below `max_grade` -- a
+  ceiling, not a band. A rewrite that reads *easier* than the target is
+  never a compliance failure (health-literacy guidance is "Nth grade and
+  below"), so there is no floor. FK is the primary scale; SMOG runs 1-3
+  grades higher and is noisy on short texts, so it is reported separately
+  rather than jointly gated.
   """
-  @spec grade_band_compliance(String.t(), {number(), number()}) :: boolean()
-  def grade_band_compliance(text, {min_grade, max_grade}) do
-    fk = Readability.flesch_kincaid(text)
-    smog = Readability.smog(text)
-
-    fk >= min_grade and fk <= max_grade and smog >= min_grade and smog <= max_grade
+  @spec grade_ceiling_compliant?(String.t(), number()) :: boolean()
+  def grade_ceiling_compliant?(text, max_grade) do
+    Readability.flesch_kincaid(text) <= max_grade
   end
 
   defp add_f1(cand, src, ref) do

@@ -71,20 +71,20 @@ defmodule SimplyPut.MetricsTest do
     end
   end
 
-  describe "grade_band_compliance/2" do
-    test "text within the band is compliant" do
-      assert Metrics.grade_band_compliance("The cat sat on the mat.", {-5.0, 8.0})
+  describe "grade_ceiling_compliant?/2" do
+    test "text at or below the ceiling is compliant" do
+      assert Metrics.grade_ceiling_compliant?("The cat sat on the mat.", 8.0)
     end
 
-    test "text above the band is not compliant" do
+    test "text above the ceiling is not compliant" do
       hard =
         "The multifaceted organization facilitated an extraordinarily convoluted understanding."
 
-      refute Metrics.grade_band_compliance(hard, {0.0, 2.0})
+      refute Metrics.grade_ceiling_compliant?(hard, 2.0)
     end
 
-    test "text below the band is not compliant" do
-      refute Metrics.grade_band_compliance("The cat sat on the mat.", {10.0, 12.0})
+    test "a rewrite easier than the target still passes (ceiling, not a band)" do
+      assert Metrics.grade_ceiling_compliant?("The cat sat on the mat.", 12.0)
     end
   end
 end
