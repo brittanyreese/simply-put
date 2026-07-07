@@ -168,7 +168,7 @@ defmodule SimplyPut.EvalRunnerTest do
     end
 
     test "bounded_omission gate passes when iterative's CI lower bound is at least 0.7" do
-      report = %{iterative: %{faithfulness_score: %{mean: 0.8, ci_95: {0.72, 0.9}}}}
+      report = %{iterative: %{omission_score: %{mean: 0.8, ci_95: {0.72, 0.9}}}}
       gates = EvalRunner.success_gates(report, %{})
       gate = Enum.find(gates, &(&1.gate == :bounded_omission))
       assert gate.passed
@@ -176,7 +176,7 @@ defmodule SimplyPut.EvalRunnerTest do
 
     test "bounded_omission gate fails when iterative's CI lower bound is below 0.7" do
       # Mean (0.85) clears the threshold; the CI lower bound (0.68) does not.
-      report = %{iterative: %{faithfulness_score: %{mean: 0.85, ci_95: {0.68, 0.95}}}}
+      report = %{iterative: %{omission_score: %{mean: 0.85, ci_95: {0.68, 0.95}}}}
       gates = EvalRunner.success_gates(report, %{})
       gate = Enum.find(gates, &(&1.gate == :bounded_omission))
       refute gate.passed

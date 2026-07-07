@@ -57,15 +57,15 @@ defmodule SimplyPut.EvalRunner do
   against `report/1`'s output (needs all three run_modes in one report)
   and a `SimplyPut.JudgeValidation.judge_vs_human_kappa/0` result.
 
-  Two of these are direct: grade-band compliance and iterative beating
-  both negative controls. The other two use documented proxies given
-  what this schema actually tracks: "moderate+ kappa" uses the
-  Landis-Koch (1977) 0.41-0.60 "moderate" threshold per axis; "bounded
-  omission" uses `faithfulness_score` as a proxy (no dedicated per-row
-  omission flag on system outputs, only on human-labeled comparisons --
-  faithfulness_score already blends SummaC + QAFactEval, and QAFactEval
-  is specifically the metric chosen for its sensitivity to entity/number
-  omissions, see the plan's KEY DECISION).
+  Two of these are direct: grade compliance (FK at or below the ceiling)
+  and iterative beating both negative controls. "moderate+ kappa" uses
+  the Landis-Koch (1977) 0.41-0.60 "moderate" threshold per axis.
+  "bounded omission" gates on `omission_score`, the reverse-direction NLI
+  entailment (candidate -> source): high means the rewrite still supports
+  the source, low means it dropped content. This is a distinct axis from
+  `faithfulness_score` (source -> candidate), which catches unsupported
+  *additions* -- the two failure directions are not symmetric, so one
+  score cannot stand in for the other.
   """
   @spec success_gates(map(), map()) :: [%{gate: atom(), passed: boolean(), detail: String.t()}]
   def success_gates(report, judge_vs_human_kappa) do
@@ -100,6 +100,7 @@ defmodule SimplyPut.EvalRunner do
       bertscore_f1: bp_summary(rows, :bertscore_f1_bp),
       sle: bp_summary(rows, :sle_bp),
       faithfulness_score: decimal_summary(rows, :faithfulness_score),
+      omission_score: decimal_summary(rows, :omission_score),
       grade_band_compliance_rate: grade_band_compliance_rate(rows)
     }
   end
@@ -190,14 +191,17 @@ defmodule SimplyPut.EvalRunner do
   defp bounded_omission_gate(report) do
     # CI lower bound, not the mean: a wide interval whose mean clears 0.7 but
     # whose lower bound sits well below it is not evidence of bounded omission.
-    iterative_lower = ci_lower_or_nil(report, :iterative, :faithfulness_score)
+    # omission_score is the reverse-direction entailment (candidate -> source):
+    # high means the rewrite still supports the source, low means it dropped
+    # content -- the direction that actually detects omission.
+    iterative_lower = ci_lower_or_nil(report, :iterative, :omission_score)
     passed = not is_nil(iterative_lower) and iterative_lower >= 0.7
 
     %{
       gate: :bounded_omission,
       passed: passed,
       detail:
-        "iterative faithfulness_score 95% CI lower (SummaC+QAFactEval proxy for omission) #{inspect(iterative_lower)} (target >= 0.7)"
+        "iterative omission_score 95% CI lower (reverse-entailment candidate -> source) #{inspect(iterative_lower)} (target >= 0.7)"
     }
   end
 
