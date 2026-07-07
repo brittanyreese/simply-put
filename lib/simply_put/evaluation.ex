@@ -15,7 +15,15 @@ defmodule SimplyPut.Evaluation do
   0..1) since the schema has a single faithfulness column -- the
   literature (see `docs/research/2026-07-04-bumblebee-vs-python-sidecar-metrics.md`)
   treats these as complementary rather than redundant, so combining them is
-  more informative than picking one.
+  more informative than picking one. Both run the entailment source ->
+  candidate, so this axis catches unsupported *additions* (hallucination),
+  not omissions: a rewrite that drops a fact stays entailed by its source.
+
+  `omission_score` is the reverse direction (candidate -> source): high
+  means the rewrite still supports the source, low means it dropped
+  content. A dropped contraindication leaves candidate -> source
+  unentailed, so this is the axis that surfaces omission -- a separate and
+  non-symmetric failure mode from addition.
   """
 
   alias SimplyPut.MetricProvider
@@ -74,18 +82,24 @@ defmodule SimplyPut.Evaluation do
 
   defp faithfulness_metrics(item, result) do
     sle = fetch(MetricProvider.sle(result.text_out))
-    entail_score = fetch_faithfulness_from_entail(item.source_text, result.text_out)
+    addition_entail = entail_scalar(item.source_text, result.text_out)
     qafacteval_score = fetch(MetricProvider.qafacteval(item.source_text, result.text_out))
+    omission_entail = entail_scalar(result.text_out, item.source_text)
 
     %{
       sle_bp: to_bp(sle),
-      faithfulness_score: combined_faithfulness(entail_score, qafacteval_score),
-      faithfulness_provider: "summac+qafacteval"
+      faithfulness_score: combined_faithfulness(addition_entail, qafacteval_score),
+      faithfulness_provider: "summac+qafacteval",
+      omission_score: omission_entail
     }
   end
 
-  defp fetch_faithfulness_from_entail(source, candidate) do
-    case MetricProvider.entail(source, candidate) do
+  # NLI entailment probability that `hypothesis` follows from `premise`, folded
+  # to a 0..1 scalar. Direction is the whole point:
+  #   entail_scalar(source, candidate) -> did the rewrite ADD unsupported claims?
+  #   entail_scalar(candidate, source) -> did the rewrite OMIT source content?
+  defp entail_scalar(premise, hypothesis) do
+    case MetricProvider.entail(premise, hypothesis) do
       {:ok, %{label: :entailment, score: score}} -> score
       {:ok, %{label: :contradiction, score: score}} -> 1.0 - score
       {:ok, %{label: :neutral}} -> 0.5
