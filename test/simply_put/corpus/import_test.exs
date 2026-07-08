@@ -30,6 +30,14 @@ defmodule SimplyPut.Corpus.ImportTest do
     assert item.reference_text =~ "blood-thinning"
   end
 
+  test "split: option assigns every row that split, overriding the hash" do
+    assert {:ok, 5} = Import.import_med_easi(@fixture, split: :test)
+
+    items = Repo.all(CorpusItem)
+    assert length(items) == 5
+    assert Enum.all?(items, &(&1.split == :test))
+  end
+
   test "rejects a file missing a required column" do
     path = Path.join(System.tmp_dir!(), "med_easi_bad_#{System.unique_integer([:positive])}.csv")
     File.write!(path, "Expert,idx\n\"only source\",med-1\n")
