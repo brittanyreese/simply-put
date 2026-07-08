@@ -89,21 +89,20 @@ defmodule SimplyPut.EvalRunnerTest do
   end
 
   describe "success_gates/2" do
-    test "returns 4 named gates with pass/fail and a detail string" do
+    test "returns 3 named gates with pass/fail and a detail string" do
       insert_test_item!()
       batch_id = EvalRunner.run()
       report = EvalRunner.report(batch_id)
 
       gates = EvalRunner.success_gates(report, %{simplicity: 0.5, fidelity: 0.5, fluency: 0.5})
 
-      assert length(gates) == 4
+      assert length(gates) == 3
 
       gate_names = gates |> Enum.map(& &1.gate) |> Enum.sort()
 
       assert gate_names == [
                :bounded_omission,
                :grade_band_compliance,
-               :iterative_beats_controls,
                :moderate_judge_human_kappa
              ]
 
@@ -143,40 +142,6 @@ defmodule SimplyPut.EvalRunnerTest do
       refute gate.passed
     end
 
-    test "iterative_beats_controls gate passes when iterative's CI lower bound clears both control means" do
-      report = %{
-        iterative: %{faithfulness_score: %{mean: 0.85, ci_95: {0.8, 0.9}}},
-        single_shot: %{faithfulness_score: %{mean: 0.7}},
-        self_refine: %{faithfulness_score: %{mean: 0.75}}
-      }
-
-      gates = EvalRunner.success_gates(report, %{})
-      gate = Enum.find(gates, &(&1.gate == :iterative_beats_controls))
-      assert gate.passed
-    end
-
-    test "iterative_beats_controls gate fails when iterative's CI lower bound sits below a control mean" do
-      # Mean (0.8) beats the control (0.7), but the wide CI lower bound (0.6)
-      # does not: a within-noise difference is not a win.
-      report = %{
-        iterative: %{faithfulness_score: %{mean: 0.8, ci_95: {0.6, 0.95}}},
-        single_shot: %{faithfulness_score: %{mean: 0.7}},
-        self_refine: %{faithfulness_score: %{mean: 0.5}}
-      }
-
-      gates = EvalRunner.success_gates(report, %{})
-      gate = Enum.find(gates, &(&1.gate == :iterative_beats_controls))
-      refute gate.passed
-    end
-
-    test "iterative_beats_controls gate fails (fail-closed) when a control is missing" do
-      report = %{iterative: %{faithfulness_score: %{mean: 0.9, ci_95: {0.85, 0.95}}}}
-
-      gates = EvalRunner.success_gates(report, %{})
-      gate = Enum.find(gates, &(&1.gate == :iterative_beats_controls))
-      refute gate.passed
-    end
-
     test "bounded_omission gate passes when iterative's CI lower bound is at least 0.7" do
       report = %{iterative: %{omission_score: %{mean: 0.8, ci_95: {0.72, 0.9}}}}
       gates = EvalRunner.success_gates(report, %{})
@@ -190,6 +155,51 @@ defmodule SimplyPut.EvalRunnerTest do
       gates = EvalRunner.success_gates(report, %{})
       gate = Enum.find(gates, &(&1.gate == :bounded_omission))
       refute gate.passed
+    end
+  end
+
+  describe "dominance/1" do
+    test "iterative_dominates when it wins or ties both axes" do
+      report = %{
+        iterative: %{grade_band_compliance_rate: 0.7, faithfulness_score: %{mean: 0.85}},
+        single_shot: %{grade_band_compliance_rate: 0.3, faithfulness_score: %{mean: 0.80}}
+      }
+
+      assert %{single_shot: %{relation: :iterative_dominates}} = EvalRunner.dominance(report)
+    end
+
+    test "tradeoff when each side wins one axis" do
+      report = %{
+        iterative: %{grade_band_compliance_rate: 0.7, faithfulness_score: %{mean: 0.80}},
+        self_refine: %{grade_band_compliance_rate: 0.8, faithfulness_score: %{mean: 0.75}}
+      }
+
+      assert %{self_refine: %{relation: :tradeoff}} = EvalRunner.dominance(report)
+    end
+
+    test "iterative_dominated when a control wins or ties both axes" do
+      report = %{
+        iterative: %{grade_band_compliance_rate: 0.3, faithfulness_score: %{mean: 0.70}},
+        single_shot: %{grade_band_compliance_rate: 0.5, faithfulness_score: %{mean: 0.80}}
+      }
+
+      assert %{single_shot: %{relation: :iterative_dominated}} = EvalRunner.dominance(report)
+    end
+
+    test "tie when both axes are equal" do
+      report = %{
+        iterative: %{grade_band_compliance_rate: 0.5, faithfulness_score: %{mean: 0.80}},
+        single_shot: %{grade_band_compliance_rate: 0.5, faithfulness_score: %{mean: 0.80}}
+      }
+
+      assert %{single_shot: %{relation: :tie}} = EvalRunner.dominance(report)
+    end
+
+    test "incomparable when a control did not run" do
+      report = %{iterative: %{grade_band_compliance_rate: 0.7, faithfulness_score: %{mean: 0.85}}}
+
+      assert %{single_shot: %{relation: :incomparable}, self_refine: %{relation: :incomparable}} =
+               EvalRunner.dominance(report)
     end
   end
 end
