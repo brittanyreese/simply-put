@@ -55,27 +55,55 @@ defmodule SimplyPut.EvalRunner do
 
   @doc """
   Phase 1 success gates from the plan's demonstration doc, evaluated
-  against `report/1`'s output (needs all three run_modes in one report)
-  and a `SimplyPut.JudgeValidation.judge_vs_human_kappa/0` result.
+  against `report/1`'s output and a
+  `SimplyPut.JudgeValidation.judge_vs_human_kappa/0` result.
 
-  Two of these are direct: grade compliance (FK at or below the ceiling)
-  and iterative beating both negative controls. "moderate+ kappa" uses
-  the Landis-Koch (1977) 0.41-0.60 "moderate" threshold per axis.
-  "bounded omission" gates on `omission_score`, the reverse-direction NLI
-  entailment (candidate -> source): high means the rewrite still supports
-  the source, low means it dropped content. This is a distinct axis from
-  `faithfulness_score` (source -> candidate), which catches unsupported
-  *additions* -- the two failure directions are not symmetric, so one
-  score cannot stand in for the other.
+  Grade compliance gates on the FK ceiling. "moderate+ kappa" uses the
+  Landis-Koch (1977) 0.41-0.60 "moderate" threshold per axis. "bounded
+  omission" gates on `omission_score`, the reverse-direction NLI entailment
+  (candidate -> source): high means the rewrite still supports the source,
+  low means it dropped content, a distinct axis from `faithfulness_score`
+  (source -> candidate), which catches unsupported *additions*.
+
+  How iterative compares to the negative controls is deliberately not a gate
+  here. It is a two-axis tradeoff (grade against faithfulness), and the
+  literature this repo rests on scores those axes apart and warns against a
+  blended verdict (Cripwell et al. 2024; ADR-0005). See `dominance/1` for
+  that comparison, reported as a Pareto relation over separate axes.
   """
   @spec success_gates(map(), map()) :: [%{gate: atom(), passed: boolean(), detail: String.t()}]
   def success_gates(report, judge_vs_human_kappa) do
     [
       grade_band_gate(report),
-      iterative_beats_controls_gate(report),
       moderate_kappa_gate(judge_vs_human_kappa),
       bounded_omission_gate(report)
     ]
+  end
+
+  @doc """
+  Iterative against each negative control on the two axes the plan cares
+  about, grade compliance and mean faithfulness, kept as separate numbers
+  with no blended score. `relation` is the Pareto relation on those means:
+
+    * `:iterative_dominates` -- at least as good on both axes, better on one
+    * `:iterative_dominated` -- the reverse
+    * `:tradeoff` -- each side wins one axis
+    * `:tie` -- equal on both
+    * `:incomparable` -- an axis is missing (a control did not run)
+
+  Descriptive, not pass/fail. The axes stay apart on purpose (Cripwell et
+  al. 2024; ADR-0005) so no single verdict hides which axis moved.
+  """
+  @spec dominance(map()) :: %{(:single_shot | :self_refine) => map()}
+  def dominance(report) do
+    iterative = axes(report, :iterative)
+
+    for control <- [:single_shot, :self_refine], into: %{} do
+      control_axes = axes(report, control)
+
+      {control,
+       %{iterative: iterative, control: control_axes, relation: relation(iterative, control_axes)}}
+    end
   end
 
   defp record_one(item, run_mode, batch_id) do
@@ -162,27 +190,6 @@ defmodule SimplyPut.EvalRunner do
     }
   end
 
-  defp iterative_beats_controls_gate(report) do
-    # Gate on iterative's 95% CI lower bound clearing each control's mean, not
-    # bare point estimates: a negative-control comparison that ignores the CI
-    # can call a within-noise difference a win.
-    iterative_lower = ci_lower_or_nil(report, :iterative, :faithfulness_score)
-    single_shot = mean_or_nil(report, :single_shot, :faithfulness_score)
-    self_refine = mean_or_nil(report, :self_refine, :faithfulness_score)
-
-    passed =
-      not is_nil(iterative_lower) and
-        at_least(iterative_lower, single_shot) and
-        at_least(iterative_lower, self_refine)
-
-    %{
-      gate: :iterative_beats_controls,
-      passed: passed,
-      detail:
-        "iterative faithfulness 95% CI lower #{inspect(iterative_lower)} vs single_shot mean #{inspect(single_shot)}, self_refine mean #{inspect(self_refine)}"
-    }
-  end
-
   defp moderate_kappa_gate(judge_vs_human_kappa) do
     axes = [:simplicity, :fidelity, :fluency]
     values = Enum.map(axes, &Map.get(judge_vs_human_kappa, &1, 0.0))
@@ -213,7 +220,35 @@ defmodule SimplyPut.EvalRunner do
     }
   end
 
-  defp mean_or_nil(report, run_mode, metric), do: get_in(report, [run_mode, metric, :mean])
+  defp axes(report, mode) do
+    %{
+      grade_compliance: get_in(report, [mode, :grade_band_compliance_rate]),
+      faithfulness: get_in(report, [mode, :faithfulness_score, :mean])
+    }
+  end
+
+  defp relation(%{grade_compliance: ig, faithfulness: iff}, %{
+         grade_compliance: cg,
+         faithfulness: cf
+       })
+       when is_nil(ig) or is_nil(iff) or is_nil(cg) or is_nil(cf),
+       do: :incomparable
+
+  defp relation(iterative, control) do
+    grade = cmp(iterative.grade_compliance, control.grade_compliance)
+    faithfulness = cmp(iterative.faithfulness, control.faithfulness)
+
+    cond do
+      grade == :eq and faithfulness == :eq -> :tie
+      grade != :lt and faithfulness != :lt -> :iterative_dominates
+      grade != :gt and faithfulness != :gt -> :iterative_dominated
+      true -> :tradeoff
+    end
+  end
+
+  defp cmp(a, b) when a > b, do: :gt
+  defp cmp(a, b) when a < b, do: :lt
+  defp cmp(_a, _b), do: :eq
 
   defp ci_lower_or_nil(report, run_mode, metric) do
     case get_in(report, [run_mode, metric, :ci_95]) do
@@ -221,10 +256,4 @@ defmodule SimplyPut.EvalRunner do
       nil -> nil
     end
   end
-
-  # Fail-closed: a missing negative control (nil) is NOT a pass. Fail-open here
-  # would score iterative as "beat" a control that never ran, inverting the
-  # point of the control.
-  defp at_least(_value, nil), do: false
-  defp at_least(value, other), do: value >= other
 end
