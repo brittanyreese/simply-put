@@ -50,6 +50,16 @@ defmodule SimplyPut.EvalRunnerTest do
       assert hd(rows).batch_id == batch_id
     end
 
+    test "limit caps how many test items run" do
+      insert_test_item!()
+      insert_test_item!(%{title: "Second"})
+      insert_test_item!(%{title: "Third"})
+
+      EvalRunner.run(run_modes: [:single_shot], limit: 2)
+
+      assert Repo.aggregate(RewriteEvaluation, :count) == 2
+    end
+
     test "ignores non-test-split and non-med_easi items" do
       insert_test_item!(%{split: :train})
       insert_test_item!(%{source: :clear_corpus, split: :test})
