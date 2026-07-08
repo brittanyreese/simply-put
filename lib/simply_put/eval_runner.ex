@@ -22,15 +22,16 @@ defmodule SimplyPut.EvalRunner do
   @doc """
   Runs the harness over the frozen Med-EASi test split. `:run_modes`
   defaults to all three (needed for the negative-control comparison);
-  pass a single-element list to run just one. Returns the shared
-  `batch_id` (all rows from one `run/1` call share it, however many
-  run_modes were requested).
+  pass a single-element list to run just one. `:limit` caps how many test
+  items run (for a quick bounded card before the full split); omit for all.
+  Returns the shared `batch_id` (all rows from one `run/1` call share it,
+  however many run_modes were requested).
   """
   @spec run(keyword()) :: String.t()
   def run(opts \\ []) do
     run_modes = Keyword.get(opts, :run_modes, @default_run_modes)
     batch_id = Keyword.get_lazy(opts, :batch_id, fn -> Ecto.UUID.generate() end)
-    items = test_split_items()
+    items = test_split_items(Keyword.get(opts, :limit))
 
     for run_mode <- run_modes, item <- items do
       record_one(item, run_mode, batch_id)
@@ -84,8 +85,18 @@ defmodule SimplyPut.EvalRunner do
     end
   end
 
-  defp test_split_items do
+  defp test_split_items(nil) do
     Repo.all(from(c in CorpusItem, where: c.source == :med_easi and c.split == :test))
+  end
+
+  defp test_split_items(limit) when is_integer(limit) do
+    Repo.all(
+      from(c in CorpusItem,
+        where: c.source == :med_easi and c.split == :test,
+        order_by: c.id,
+        limit: ^limit
+      )
+    )
   end
 
   defp rows(batch_id) do
