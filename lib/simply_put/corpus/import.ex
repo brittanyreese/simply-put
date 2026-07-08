@@ -38,23 +38,31 @@ defmodule SimplyPut.Corpus.Import do
   import rather than leaving a partial one that would duplicate rows on
   retry. A row missing one of the mapped cells returns `{:malformed_row,
   row}` instead of crashing.
+
+  Pass `split: :train | :dev | :test` to assign every row that split (import
+  Med-EASi's own `train.csv`/`validation.csv`/`test.csv` per-file to keep the
+  dataset's canonical split, which is what published benchmark numbers use).
+  Omit it to fall back to the deterministic `split_for/1` hash, useful when a
+  file ships no split of its own.
   """
-  @spec import_med_easi(Path.t()) :: {:ok, non_neg_integer()} | {:error, term()}
-  def import_med_easi(path) do
+  @spec import_med_easi(Path.t(), keyword()) :: {:ok, non_neg_integer()} | {:error, term()}
+  def import_med_easi(path, opts \\ []) do
+    split = Keyword.get(opts, :split)
+
     Repo.transaction(fn ->
       case path |> File.read!() |> MedEasiCSV.parse_string(skip_headers: false) do
-        [header | rows] -> import_rows(header, rows)
+        [header | rows] -> import_rows(header, rows, split)
         [] -> Repo.rollback(:empty_file)
       end
     end)
   end
 
-  defp import_rows(header, rows) do
+  defp import_rows(header, rows, split) do
     case column_indices(header) do
       {:ok, cols} ->
         rows
         |> Enum.reduce_while(0, fn row, count ->
-          case insert_row(row, cols) do
+          case insert_row(row, cols, split) do
             {:ok, _item} -> {:cont, count + 1}
             {:error, reason} -> {:halt, {:error, reason}}
           end
@@ -86,7 +94,7 @@ defmodule SimplyPut.Corpus.Import do
     end
   end
 
-  defp insert_row(row, cols) do
+  defp insert_row(row, cols, split) do
     id = Enum.at(row, cols.id)
     complex = Enum.at(row, cols.source)
     simple = Enum.at(row, cols.reference)
@@ -100,7 +108,7 @@ defmodule SimplyPut.Corpus.Import do
         source_grade: Readability.flesch_kincaid(complex),
         reference_text: simple,
         source: :med_easi,
-        split: split_for(id)
+        split: split || split_for(id)
       }
 
       %CorpusItem{} |> CorpusItem.changeset(attrs) |> Repo.insert()
