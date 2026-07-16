@@ -6,11 +6,10 @@ defmodule SimplyPut.MetricProvider.Bumblebee.Servings do
   tree -- `SimplyPut.MetricProvider.Bumblebee` starts it on demand, the
   first time any metric function is actually called.
 
-  Checkpoint ids below are provisional (not yet pinned/verified against a
-  live download in this environment -- no network egress here, see
-  `docs/plans/phase1-health-demo/notes.md`). Confirm each loads and
-  behaves as expected, then record the exact pinned ids per the plan's
-  Phase M task before treating any score as reproducible.
+  Checkpoint ids below name the exact HF repos the eval runs load (by
+  name, not revision-pinned). The rationale for mapping each metric to a
+  Bumblebee task shape is in
+  `docs/research/2026-07-04-bumblebee-vs-python-sidecar-metrics.md`.
   """
 
   use GenServer
