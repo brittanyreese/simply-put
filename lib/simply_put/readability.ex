@@ -44,8 +44,7 @@ defmodule SimplyPut.Readability do
   Natural-language critique for the next rewrite attempt: concrete FK-derived
   problems plus a standing anti-gaming clause, not just the numeric grade.
 
-  Grounding (docs/plans/public-demo-repo/research/methodology-grounding-brief.md):
-  iterative-refinement literature (Reflexion, Self-Refine) finds actionable
+  Grounding: iterative-refinement literature (Reflexion, Self-Refine) finds actionable
   natural-language feedback outperforms a bare scalar for steering the next
   attempt. The anti-gaming clause guards against retrying purely against the
   FK score, a documented failure mode (Tanprasert & Kauchak, 2021) since FK
