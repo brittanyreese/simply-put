@@ -89,9 +89,15 @@ defmodule SimplyPut.Evaluation do
     %{
       sle_bp: to_bp(sle),
       faithfulness_score: combined_faithfulness(addition_entail, qafacteval_score),
-      faithfulness_provider: "summac+qafacteval",
+      faithfulness_provider: faithfulness_provider(),
       omission_score: omission_entail
     }
+  end
+
+  # Recorded per row so a batch's provenance survives config changes: a
+  # Stub-scored row must never claim it was measured by the real models.
+  defp faithfulness_provider do
+    if MetricProvider.simulated?(), do: "stub", else: "summac+qafacteval"
   end
 
   # NLI entailment probability that `hypothesis` follows from `premise`, folded
