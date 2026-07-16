@@ -17,7 +17,7 @@ defmodule Mix.Tasks.SimplyPut.ImportHumanLabels do
     Application.ensure_all_started(:ecto_sql)
     SimplyPut.Repo.start_link()
 
-    case Import.import(path, String.to_existing_atom(source)) do
+    case Import.import(path, source_atom(source)) do
       {:ok, count} -> Mix.shell().info("Imported #{count} human-labeled rows (#{source}).")
       {:error, reason} -> Mix.raise("Import failed: #{inspect(reason)}")
     end
@@ -26,4 +26,9 @@ defmodule Mix.Tasks.SimplyPut.ImportHumanLabels do
   def run(_args) do
     Mix.raise("Usage: mix simply_put.import_human_labels <asset|plaba_trec> <path>")
   end
+
+  # Not String.to_existing_atom/1: under the minimal app.config boot no
+  # module referencing these atoms is loaded yet, so they don't exist.
+  defp source_atom("asset"), do: :asset
+  defp source_atom("plaba_trec"), do: :plaba_trec
 end
