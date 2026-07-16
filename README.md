@@ -110,6 +110,37 @@ The Flesch-Kincaid gate checks sentence and word length, not whether a
 rewrite is actually easier to understand. It's a verifiable proxy, not a
 comprehension test.
 
+## Results so far
+
+A bounded card on the canonical Med-EASi test split: 30 items, real
+Bumblebee metrics plus an OpenRouter judge, run under all three modes. Full
+numbers and method in
+[`docs/results/2026-07-08-med-easi-bounded-card.md`](docs/results/2026-07-08-med-easi-bounded-card.md);
+the full 300-item split is the next run.
+
+| metric | iterative | single_shot | self_refine |
+|--------|-----------|-------------|-------------|
+| FK grade | 7.36 | 10.27 | 7.49 |
+| grade <= 8 compliance | 70% | 23% | 77% |
+| faithfulness (source to candidate) | 0.838 | 0.866 | 0.818 |
+| omission (candidate to source) | 0.838 | 0.867 | 0.817 |
+| BERTScore F1 | 0.996 | 0.998 | 0.998 |
+| SARI | 0.438 | 0.413 | 0.436 |
+
+The two gated modes (iterative, self_refine) land near 7th grade and clear
+the 8th-grade ceiling 70-77% of the time. Ungated single_shot sits at 10th
+grade and clears it 23% of the time. Iterative against the controls isn't a
+single verdict: it's a two-axis tradeoff, reported as a dominance relation
+rather than blended into one score (see
+[ADR-0005](docs/adr/0005-separate-axes-not-blended-verdict.md)). Whether
+external feedback beats self-critique stays unproven at this sample size,
+and keeping the axes separate is what lets that stay visible instead of
+getting averaged away.
+
+Caveats: n=30 means wide confidence intervals. SLE is nil throughout (the
+SLE tokenizer won't load in Bumblebee). BERTScore sits near 0.997 for every
+mode and barely discriminates.
+
 ## Judge and the real adapter
 
 `SimplyPut.LLM.OpenRouter` follows the same adapter behaviour as the
