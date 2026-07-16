@@ -2,7 +2,7 @@
 
 Three reviewers checked the Phase 1 evaluation harness. Each worked independently, blind to the others' notes. One covered methods (labeled "Methodology" below). Another covered domain and construct validity. The third played devil's advocate. Scope is measurement, statistical, and construct validity. Code style and Iron Laws are covered by a prior review.
 
-Reviewed materials: `docs/plans/phase1-health-demo/plan.md`, `docs/plans/public-demo-repo/research/methodology-grounding-brief.md`, ADRs 0001-0004, `lib/simply_put/eval_runner.ex`, `lib/simply_put/stats.ex`, `lib/simply_put/judge_validation.ex`, `lib/simply_put/metric_provider.ex`.
+The reviewers read the Phase 1 plan and its grounding brief (local working notes, kept outside the repo) alongside ADRs 0001-0004 and the harness modules under review: `lib/simply_put/eval_runner.ex`, `lib/simply_put/stats.ex`, `lib/simply_put/judge_validation.ex`, and `lib/simply_put/metric_provider.ex`.
 
 ## Decision: Major Revision
 
