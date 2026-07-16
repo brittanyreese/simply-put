@@ -112,34 +112,38 @@ comprehension test.
 
 ## Results so far
 
-A bounded card on the canonical Med-EASi test split: 30 items, real
-Bumblebee metrics plus an OpenRouter judge, run under all three modes. Full
-numbers and method in
-[`docs/results/2026-07-08-med-easi-bounded-card.md`](docs/results/2026-07-08-med-easi-bounded-card.md);
-the full 300-item split is the next run.
+The full canonical Med-EASi test split, 300 items per mode, ran under all
+three modes in one batch. Metrics came from real Bumblebee inference with
+an OpenRouter judge. Method and full numbers live in
+[`docs/results/2026-07-15-med-easi-full-split.md`](docs/results/2026-07-15-med-easi-full-split.md).
+The earlier 30-item bounded card is
+[`docs/results/2026-07-08-med-easi-bounded-card.md`](docs/results/2026-07-08-med-easi-bounded-card.md).
 
 | metric | iterative | single_shot | self_refine |
 |--------|-----------|-------------|-------------|
-| FK grade | 7.36 | 10.27 | 7.49 |
-| grade <= 8 compliance | 70% | 23% | 77% |
-| faithfulness (source to candidate) | 0.838 | 0.866 | 0.818 |
-| omission (candidate to source) | 0.838 | 0.867 | 0.817 |
-| BERTScore F1 | 0.996 | 0.998 | 0.998 |
-| SARI | 0.438 | 0.413 | 0.436 |
+| FK grade | 7.03 | 8.38 | 7.04 |
+| grade <= 8 compliance | 72.7% | 51.0% | 74.3% |
+| faithfulness (source to candidate) | 0.886 | 0.927 | 0.893 |
+| omission (candidate to source) | 0.891 | 0.932 | 0.899 |
+| BERTScore F1 | 0.998 | 0.998 | 0.998 |
+| SARI | 0.401 | 0.403 | 0.393 |
 
-The two gated modes (iterative, self_refine) land near 7th grade and clear
-the 8th-grade ceiling 70-77% of the time. Ungated single_shot sits at 10th
-grade and clears it 23% of the time. Iterative against the controls isn't a
-single verdict: it's a two-axis tradeoff, reported as a dominance relation
-rather than blended into one score (see
-[ADR-0005](docs/adr/0005-separate-axes-not-blended-verdict.md)). Whether
-external feedback beats self-critique stays unproven at this sample size,
-and keeping the axes separate is what lets that stay visible instead of
-getting averaged away.
+The two gated modes sit at 7th grade and clear the 8th-grade ceiling
+72.7% and 74.3% of the time, against 51.0% for ungated single_shot.
+Iterative against single_shot is a two-axis tradeoff, reported as a
+dominance relation rather than one blended score (see
+[ADR-0005](docs/adr/0005-separate-axes-not-blended-verdict.md)). The gate
+buys 21.7 points of grade compliance for 0.041 of faithfulness. Against
+self_refine the full split settles what n=30 left open, and the answer
+cuts against the pipeline's own favorite mode. self_refine edges iterative
+on both axes by margins inside overlapping CIs, so external tool feedback
+shows no measurable advantage over model self-critique on this corpus with
+this model pairing. Keeping the axes separate is what makes that visible.
 
-Caveats: n=30 means wide confidence intervals. SLE is nil throughout (the
-SLE tokenizer won't load in Bumblebee). BERTScore sits near 0.997 for every
-mode and barely discriminates.
+Caveats: SLE is nil throughout (the SLE tokenizer won't load in
+Bumblebee). BERTScore sits near 0.998 for every mode and barely
+discriminates. The dominance relation compares point estimates without a
+significance test.
 
 The judge is calibrated against human ratings, not taken on faith. On 100
 ASSET pairs, quadratically-weighted kappa reaches 0.77 for fidelity and
