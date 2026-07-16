@@ -49,3 +49,6 @@ config/*.secret.exs
 
 # OS
 .DS_Store
+
+# Python bytecode (scripts/ pivot tooling)
+__pycache__/
