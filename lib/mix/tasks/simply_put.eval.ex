@@ -42,7 +42,10 @@ defmodule Mix.Tasks.SimplyPut.Eval do
     report = EvalRunner.report(batch_id)
 
     Mix.shell().info("Batch: #{batch_id}")
-    maybe_simulated_banner()
+    # The banner keys off the CURRENT adapter config, which only describes
+    # rows written by this invocation -- meaningless for --report of a
+    # batch recorded earlier (each row carries faithfulness_provider).
+    if is_nil(opts[:report]), do: maybe_simulated_banner()
     print_report(report)
     print_gates(report)
     print_dominance(report)

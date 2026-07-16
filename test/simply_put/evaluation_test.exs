@@ -68,7 +68,7 @@ defmodule SimplyPut.EvaluationTest do
     assert is_integer(evaluation.sle_bp)
     assert evaluation.faithfulness_score != nil
     assert evaluation.omission_score != nil
-    assert evaluation.faithfulness_provider == "summac+qafacteval"
+    assert evaluation.faithfulness_provider == "stub"
     assert evaluation.generator_model == "stub"
     assert evaluation.judge_model == "stub"
   end
