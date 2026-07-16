@@ -2,16 +2,27 @@ defmodule Mix.Tasks.SimplyPut.Eval do
   @shortdoc "Runs the eval harness over the frozen Med-EASi test split and prints a report card"
   @moduledoc """
   Usage: mix simply_put.eval [--run-mode iterative|single_shot|self_refine]
+  Usage: mix simply_put.eval --report BATCH_ID
 
   Without `--run-mode`, runs all three (iterative, single_shot,
   self_refine) under one shared batch_id, producing the negative-control
-  comparison table. Starts only `Ecto.Repo`, not the full application
-  (Iron Law #12: never `app.start` from a mix task).
+  comparison table. `--report BATCH_ID` skips the run and reprints the
+  report, success gates, and dominance table for an already-recorded
+  batch. Starts only `Ecto.Repo`, not the full application (Iron Law #12:
+  never `app.start` from a mix task); `:inets`/`:ssl` are started
+  explicitly, only when the judge-vs-human kappa gate has labels to score.
   """
 
   use Mix.Task
 
+  import Ecto.Query
+
   alias SimplyPut.EvalRunner
+  alias SimplyPut.HumanLabel
+  alias SimplyPut.JudgeValidation
+  alias SimplyPut.Repo
+
+  @no_human_labels_kappa %{simplicity: 0.0, fidelity: 0.0, fluency: 0.0, items: 0}
 
   @impl Mix.Task
   def run(args) do
@@ -19,20 +30,32 @@ defmodule Mix.Tasks.SimplyPut.Eval do
     Application.ensure_all_started(:ecto_sql)
     SimplyPut.Repo.start_link()
 
-    {opts, _rest, _invalid} = OptionParser.parse(args, strict: [run_mode: :string])
+    {opts, _rest, _invalid} =
+      OptionParser.parse(args, strict: [run_mode: :string, report: :string])
 
+    batch_id =
+      case opts[:report] do
+        nil -> run_batch(opts)
+        batch_id -> batch_id
+      end
+
+    report = EvalRunner.report(batch_id)
+
+    Mix.shell().info("Batch: #{batch_id}")
+    maybe_simulated_banner()
+    print_report(report)
+    print_gates(report)
+    print_dominance(report)
+  end
+
+  defp run_batch(opts) do
     run_opts =
       case opts[:run_mode] do
         nil -> []
         mode -> [run_modes: [String.to_existing_atom(mode)]]
       end
 
-    batch_id = EvalRunner.run(run_opts)
-    report = EvalRunner.report(batch_id)
-
-    Mix.shell().info("Batch: #{batch_id}")
-    maybe_simulated_banner()
-    print_report(report)
+    EvalRunner.run(run_opts)
   end
 
   defp maybe_simulated_banner do
@@ -65,4 +88,57 @@ defmodule Mix.Tasks.SimplyPut.Eval do
   defp format_summary(%{mean: mean, ci_95: {lower, upper}}) do
     "#{Float.round(mean, 3)} (95% CI #{Float.round(lower, 3)}-#{Float.round(upper, 3)})"
   end
+
+  defp print_gates(report) do
+    gates = EvalRunner.success_gates(report, judge_vs_human_kappa())
+
+    Mix.shell().info("\n== Success gates ==")
+
+    Enum.each(gates, fn gate ->
+      Mix.shell().info("  [#{status_label(gate.status)}] #{gate.gate}: #{gate.detail}")
+    end)
+  end
+
+  defp status_label(:pass), do: "PASS"
+  defp status_label(:fail), do: "FAIL"
+  defp status_label(:not_evaluated), do: "N/E "
+
+  # judge_vs_human_kappa/0 makes a paid LLM judge call per labeled row --
+  # skip it (and the :inets/:ssl app starts it needs) when there is
+  # nothing to score against.
+  defp judge_vs_human_kappa do
+    if Repo.exists?(from(l in HumanLabel, where: l.source_dataset in [:asset, :plaba_trec])) do
+      Application.ensure_all_started(:inets)
+      Application.ensure_all_started(:ssl)
+      JudgeValidation.judge_vs_human_kappa()
+    else
+      @no_human_labels_kappa
+    end
+  end
+
+  defp print_dominance(report) do
+    Mix.shell().info("\n== Dominance: iterative vs. negative controls ==")
+
+    report
+    |> EvalRunner.dominance()
+    |> Enum.each(fn {control, %{iterative: iterative, control: control_axes, relation: relation}} ->
+      Mix.shell().info("  vs #{control}: #{relation}")
+
+      Mix.shell().info(
+        "    iterative:   grade #{fmt_pct(iterative.grade_compliance)}, " <>
+          "faithfulness #{fmt(iterative.faithfulness)}"
+      )
+
+      Mix.shell().info(
+        "    #{control}: grade #{fmt_pct(control_axes.grade_compliance)}, " <>
+          "faithfulness #{fmt(control_axes.faithfulness)}"
+      )
+    end)
+  end
+
+  defp fmt_pct(nil), do: "n/a"
+  defp fmt_pct(value), do: "#{Float.round(value * 100, 1)}%"
+
+  defp fmt(nil), do: "n/a"
+  defp fmt(value), do: Float.round(value, 3)
 end
