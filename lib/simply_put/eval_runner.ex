@@ -58,6 +58,12 @@ defmodule SimplyPut.EvalRunner do
   against `report/1`'s output and a
   `SimplyPut.JudgeValidation.judge_vs_human_kappa/0` result.
 
+  Each gate reports a `status` of `:pass`, `:fail`, or `:not_evaluated` --
+  the last is not a failure, it means there was no data to judge against.
+  `moderate_kappa_gate/1` is `:not_evaluated` when no `human_labels` rows
+  are loaded (nothing to compare the judge to), so an empty labels table
+  reads as "not measured", not "failed".
+
   Grade compliance gates on the FK ceiling. "moderate+ kappa" uses the
   Landis-Koch (1977) 0.41-0.60 "moderate" threshold per axis. "bounded
   omission" gates on `omission_score`, the reverse-direction NLI entailment
@@ -71,7 +77,9 @@ defmodule SimplyPut.EvalRunner do
   blended verdict (Cripwell et al. 2024; ADR-0005). See `dominance/1` for
   that comparison, reported as a Pareto relation over separate axes.
   """
-  @spec success_gates(map(), map()) :: [%{gate: atom(), passed: boolean(), detail: String.t()}]
+  @spec success_gates(map(), map()) :: [
+          %{gate: atom(), status: :pass | :fail | :not_evaluated, detail: String.t()}
+        ]
   def success_gates(report, judge_vs_human_kappa) do
     [
       grade_band_gate(report),
@@ -184,20 +192,29 @@ defmodule SimplyPut.EvalRunner do
 
     %{
       gate: :grade_band_compliance,
-      passed: rate >= 0.5,
+      status: gate_status(rate >= 0.5),
       detail:
         "iterative FK grade <= #{@grade_ceiling} compliance: #{Float.round(rate * 100, 1)}% (target >= 50%)"
+    }
+  end
+
+  defp moderate_kappa_gate(%{items: 0}) do
+    %{
+      gate: :moderate_judge_human_kappa,
+      status: :not_evaluated,
+      detail:
+        "no human_labels loaded; import ASSET/PLABA labels to evaluate " <>
+          "(mix simply_put.import_human_labels)"
     }
   end
 
   defp moderate_kappa_gate(judge_vs_human_kappa) do
     axes = [:simplicity, :fidelity, :fluency]
     values = Enum.map(axes, &Map.get(judge_vs_human_kappa, &1, 0.0))
-    passed = Enum.all?(values, &(&1 >= 0.41))
 
     %{
       gate: :moderate_judge_human_kappa,
-      passed: passed,
+      status: gate_status(Enum.all?(values, &(&1 >= 0.41))),
       detail:
         "judge-vs-human kappa per axis: #{inspect(Enum.zip(axes, values))} (target >= 0.41, Landis-Koch \"moderate\")"
     }
@@ -210,15 +227,17 @@ defmodule SimplyPut.EvalRunner do
     # high means the rewrite still supports the source, low means it dropped
     # content -- the direction that actually detects omission.
     iterative_lower = ci_lower_or_nil(report, :iterative, :omission_score)
-    passed = not is_nil(iterative_lower) and iterative_lower >= 0.7
 
     %{
       gate: :bounded_omission,
-      passed: passed,
+      status: gate_status(not is_nil(iterative_lower) and iterative_lower >= 0.7),
       detail:
         "iterative omission_score 95% CI lower (reverse-entailment candidate -> source) #{inspect(iterative_lower)} (target >= 0.7)"
     }
   end
+
+  defp gate_status(true), do: :pass
+  defp gate_status(false), do: :fail
 
   defp axes(report, mode) do
     %{
