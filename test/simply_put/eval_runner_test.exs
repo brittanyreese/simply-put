@@ -89,12 +89,13 @@ defmodule SimplyPut.EvalRunnerTest do
   end
 
   describe "success_gates/2" do
-    test "returns 3 named gates with pass/fail and a detail string" do
+    test "returns 3 named gates with a status and a detail string" do
       insert_test_item!()
       batch_id = EvalRunner.run()
       report = EvalRunner.report(batch_id)
 
-      gates = EvalRunner.success_gates(report, %{simplicity: 0.5, fidelity: 0.5, fluency: 0.5})
+      kappa = %{simplicity: 0.5, fidelity: 0.5, fluency: 0.5, items: 10}
+      gates = EvalRunner.success_gates(report, kappa)
 
       assert length(gates) == 3
 
@@ -107,46 +108,56 @@ defmodule SimplyPut.EvalRunnerTest do
              ]
 
       assert Enum.all?(gates, &is_binary(&1.detail))
-      assert Enum.all?(gates, &is_boolean(&1.passed))
+      assert Enum.all?(gates, &(&1.status in [:pass, :fail, :not_evaluated]))
     end
 
     test "moderate_kappa gate fails when any axis is below the 0.41 threshold" do
-      gates = EvalRunner.success_gates(%{}, %{simplicity: 0.2, fidelity: 0.5, fluency: 0.5})
+      kappa = %{simplicity: 0.2, fidelity: 0.5, fluency: 0.5, items: 10}
+      gates = EvalRunner.success_gates(%{}, kappa)
       gate = Enum.find(gates, &(&1.gate == :moderate_judge_human_kappa))
-      refute gate.passed
+      assert gate.status == :fail
     end
 
     test "moderate_kappa gate passes when every axis clears the threshold" do
-      gates = EvalRunner.success_gates(%{}, %{simplicity: 0.5, fidelity: 0.5, fluency: 0.5})
+      kappa = %{simplicity: 0.5, fidelity: 0.5, fluency: 0.5, items: 10}
+      gates = EvalRunner.success_gates(%{}, kappa)
       gate = Enum.find(gates, &(&1.gate == :moderate_judge_human_kappa))
-      assert gate.passed
+      assert gate.status == :pass
+    end
+
+    test "moderate_kappa gate is not_evaluated when no human_labels are loaded" do
+      kappa = %{simplicity: 0.0, fidelity: 0.0, fluency: 0.0, items: 0}
+      gates = EvalRunner.success_gates(%{}, kappa)
+      gate = Enum.find(gates, &(&1.gate == :moderate_judge_human_kappa))
+      assert gate.status == :not_evaluated
+      assert gate.detail =~ "no human_labels loaded"
     end
 
     test "grade_band gate passes when iterative compliance rate is at least 50%" do
       report = %{iterative: %{grade_band_compliance_rate: 0.5}}
       gates = EvalRunner.success_gates(report, %{})
       gate = Enum.find(gates, &(&1.gate == :grade_band_compliance))
-      assert gate.passed
+      assert gate.status == :pass
     end
 
     test "grade_band gate fails when iterative compliance rate is below 50%" do
       report = %{iterative: %{grade_band_compliance_rate: 0.49}}
       gates = EvalRunner.success_gates(report, %{})
       gate = Enum.find(gates, &(&1.gate == :grade_band_compliance))
-      refute gate.passed
+      assert gate.status == :fail
     end
 
     test "grade_band gate fails (not raises) when the iterative run_mode is missing" do
       gates = EvalRunner.success_gates(%{}, %{})
       gate = Enum.find(gates, &(&1.gate == :grade_band_compliance))
-      refute gate.passed
+      assert gate.status == :fail
     end
 
     test "bounded_omission gate passes when iterative's CI lower bound is at least 0.7" do
       report = %{iterative: %{omission_score: %{mean: 0.8, ci_95: {0.72, 0.9}}}}
       gates = EvalRunner.success_gates(report, %{})
       gate = Enum.find(gates, &(&1.gate == :bounded_omission))
-      assert gate.passed
+      assert gate.status == :pass
     end
 
     test "bounded_omission gate fails when iterative's CI lower bound is below 0.7" do
@@ -154,7 +165,7 @@ defmodule SimplyPut.EvalRunnerTest do
       report = %{iterative: %{omission_score: %{mean: 0.85, ci_95: {0.68, 0.95}}}}
       gates = EvalRunner.success_gates(report, %{})
       gate = Enum.find(gates, &(&1.gate == :bounded_omission))
-      refute gate.passed
+      assert gate.status == :fail
     end
   end
 
