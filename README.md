@@ -141,6 +141,13 @@ Caveats: n=30 means wide confidence intervals. SLE is nil throughout (the
 SLE tokenizer won't load in Bumblebee). BERTScore sits near 0.997 for every
 mode and barely discriminates.
 
+The judge is calibrated against human ratings, not taken on faith. On 100
+ASSET pairs, quadratically-weighted kappa reaches 0.77 for fidelity and
+0.72 for fluency (substantial agreement) but only 0.22 for simplicity,
+a failed gate. The miss sits on the one axis the judge was never given:
+the deterministic FK gate owns simplicity (ADR-0002). Details in
+[`docs/results/2026-07-15-asset-judge-kappa.md`](docs/results/2026-07-15-asset-judge-kappa.md).
+
 ## Judge and the real adapter
 
 `SimplyPut.LLM.OpenRouter` follows the same adapter behaviour as the
