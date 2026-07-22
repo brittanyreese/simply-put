@@ -13,6 +13,40 @@ answer is to trust a deterministic check for the part that can be computed,
 and to calibrate a model-based judge, against a human agreement ceiling, for
 the part that cannot.
 
+## Example
+
+Real output from one pass through the pipeline, using the default
+credential-free stub adapter (`mix.lock`-pinned deps only, no
+`OPENROUTER_API_KEY`, no network call). It is the same rewrite loop and
+Flesch-Kincaid gate a real LLM adapter runs through, with a crude
+fixed-vocabulary stand-in doing the "rewriting":
+
+<!-- vale ai-tells.FormalRegister = NO -->
+<!-- vale ai-tells.OverusedVocabulary = NO -->
+<!-- vale ai-tells.FillerPhrases = NO -->
+
+**Before** (FK grade 18.53):
+> The organization will commence its endeavor to facilitate additional support for numerous individuals.
+
+**After** (FK grade 6.01, target 6.0, passed on attempt 1):
+> The organization will start its try to help. additional support for lots folks.
+
+<!-- vale ai-tells.FormalRegister = YES -->
+<!-- vale ai-tells.OverusedVocabulary = YES -->
+<!-- vale ai-tells.FillerPhrases = YES -->
+
+Reproduce it:
+
+```
+mix run -e 'IO.inspect(SimplyPut.Plainish.run("The organization will commence its endeavor to facilitate additional support for numerous individuals."))'
+```
+
+The stub is deliberately crude (see `lib/simply_put/llm/stub.ex`). It exists
+to exercise the real gate and retry loop without a network call, not to
+produce fluent prose. Swap in the OpenRouter adapter (`OPENROUTER_API_KEY`,
+see [the real adapter and judge](#the-real-adapter-and-judge)) for an actual
+model rewrite. The gate and grades work the same way either side.
+
 ## Problem
 
 Two failure modes make an LLM rewriter hard to evaluate on its own word.
