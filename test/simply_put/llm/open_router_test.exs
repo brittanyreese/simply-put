@@ -1,5 +1,6 @@
 defmodule SimplyPut.LLM.OpenRouterTest do
-  use ExUnit.Case, async: true
+  # async: false -- mutates global :simply_put OpenRouter config (VM-wide).
+  use ExUnit.Case, async: false
 
   alias SimplyPut.LLM.OpenRouter
 

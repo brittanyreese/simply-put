@@ -19,7 +19,8 @@ defmodule SimplyPut.FakeMetricProvider do
 end
 
 defmodule SimplyPut.EvaluationTest do
-  use ExUnit.Case, async: true
+  # async: false -- mutates global :metric_provider config (VM-wide).
+  use ExUnit.Case, async: false
 
   alias Ecto.Adapters.SQL.Sandbox
   alias SimplyPut.CorpusItem
