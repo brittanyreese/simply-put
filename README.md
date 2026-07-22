@@ -18,7 +18,7 @@ mix deps.get && mix test
 
 That runs a real rewrite pipeline against the deterministic Flesch-Kincaid
 gate below, using a stub adapter (no network calls), and comes back green:
-1 doctest, 136 tests, 0 failures (8 excluded). Live-API tests are tagged
+1 doctest, 149 tests, 0 failures (8 excluded). Live-API tests are tagged
 `:live` and excluded by default; run them with `mix test --only live` (see
 [Judge and the real adapter](#judge-and-the-real-adapter)). Tests that load a
 real embedding model are tagged `:bumblebee_models` and excluded the same way.
@@ -140,10 +140,15 @@ on both axes by margins inside overlapping CIs, so external tool feedback
 shows no measurable advantage over model self-critique on this corpus with
 this model pairing. Keeping the axes separate is what makes that visible.
 
-Caveats: SLE is nil throughout (the SLE tokenizer won't load in
-Bumblebee). BERTScore sits near 0.998 for every mode and barely
-discriminates. The dominance relation compares point estimates without a
-significance test.
+Caveats on this recorded run: SLE is nil throughout, and the dominance
+relation compares point estimates only. Both have since been addressed and
+are not yet folded into the numbers above. The SLE tokenizer now loads (it
+needs `roberta-base`'s tokenizer, not `sle-base`'s own, and is verified
+against a live checkpoint), and the harness now reports a paired bootstrap
+significance test on each dominance axis, so the self_refine parity above is
+now checkable rather than asserted. A refreshed card that includes SLE and
+the significance verdicts is pending a rerun. BERTScore sits near 0.998 for
+every mode and barely discriminates.
 
 The judge is calibrated against human ratings, not taken on faith. On 100
 ASSET pairs, quadratically-weighted kappa reaches 0.77 for fidelity and
