@@ -9,8 +9,11 @@ defmodule Mix.Tasks.SimplyPut.Eval do
   comparison table. `--report BATCH_ID` skips the run and reprints the
   report, success gates, and dominance table for an already-recorded
   batch. Starts only `Ecto.Repo`, not the full application (Iron Law #12:
-  never `app.start` from a mix task); `:inets`/`:ssl` are started
-  explicitly, only when the judge-vs-human kappa gate has labels to score.
+  never `app.start` from a mix task). A real (non-Stub) metric run also
+  starts `:inets`/`:ssl`/`:exla`/`:bumblebee` up front (Bumblebee needs its
+  own `:httpc_bumblebee` profile to download checkpoints); a Stub run starts
+  nothing extra. The kappa gate additionally ensures `:inets`/`:ssl` when it
+  has labels to score.
   """
 
   use Mix.Task
@@ -52,6 +55,8 @@ defmodule Mix.Tasks.SimplyPut.Eval do
   end
 
   defp run_batch(opts) do
+    ensure_metric_provider_started()
+
     run_opts =
       case opts[:run_mode] do
         nil -> []
@@ -59,6 +64,24 @@ defmodule Mix.Tasks.SimplyPut.Eval do
       end
 
     EvalRunner.run(run_opts)
+  end
+
+  # A real (non-Stub) metric provider loads checkpoints over HTTP, which needs
+  # the :bumblebee application running: it owns the :httpc_bumblebee profile
+  # Bumblebee downloads through. Without this the first download crashes the
+  # Servings GenServer ("no process :httpc_bumblebee"). The task boots only
+  # :ecto_sql by default (Iron Law #12), so start the rest here, and only for
+  # a real run. Stub runs need nothing extra. `--report` never reaches here.
+  defp ensure_metric_provider_started do
+    if SimplyPut.MetricProvider.simulated?() do
+      :ok
+    else
+      {:ok, _} = Application.ensure_all_started(:inets)
+      {:ok, _} = Application.ensure_all_started(:ssl)
+      {:ok, _} = Application.ensure_all_started(:exla)
+      {:ok, _} = Application.ensure_all_started(:bumblebee)
+      :ok
+    end
   end
 
   defp maybe_simulated_banner do
