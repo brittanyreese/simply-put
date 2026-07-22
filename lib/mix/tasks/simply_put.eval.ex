@@ -48,7 +48,7 @@ defmodule Mix.Tasks.SimplyPut.Eval do
     if is_nil(opts[:report]), do: maybe_simulated_banner()
     print_report(report)
     print_gates(report)
-    print_dominance(report)
+    print_dominance(report, batch_id)
   end
 
   defp run_batch(opts) do
@@ -119,8 +119,10 @@ defmodule Mix.Tasks.SimplyPut.Eval do
     end
   end
 
-  defp print_dominance(report) do
+  defp print_dominance(report, batch_id) do
     Mix.shell().info("\n== Dominance: iterative vs. negative controls ==")
+
+    significance = EvalRunner.significance(batch_id)
 
     report
     |> EvalRunner.dominance()
@@ -136,6 +138,10 @@ defmodule Mix.Tasks.SimplyPut.Eval do
         "    #{control}: grade #{fmt_pct(control_axes.grade_compliance)}, " <>
           "faithfulness #{fmt(control_axes.faithfulness)}"
       )
+
+      axes = Map.get(significance, control, %{})
+      Mix.shell().info("    grade diff:        #{fmt_sig(axes[:grade_compliance])}")
+      Mix.shell().info("    faithfulness diff: #{fmt_sig(axes[:faithfulness])}")
     end)
   end
 
@@ -144,4 +150,15 @@ defmodule Mix.Tasks.SimplyPut.Eval do
 
   defp fmt(nil), do: "n/a"
   defp fmt(value), do: Float.round(value, 3)
+
+  # The line that keeps dominance honest: the paired iterative-minus-control
+  # difference, its 95% CI, and whether that CI clears zero. "not sig" means
+  # the point-estimate edge is inside noise.
+  defp fmt_sig(nil), do: "n/a (no paired data)"
+
+  defp fmt_sig(%{diff: diff, ci_95: {lower, upper}, significant: significant}) do
+    verdict = if significant, do: "significant", else: "not sig (CI spans 0)"
+
+    "#{Float.round(diff, 3)} (95% CI #{Float.round(lower, 3)} to #{Float.round(upper, 3)}) -- #{verdict}"
+  end
 end
