@@ -34,6 +34,28 @@ defmodule SimplyPut.LLM.CapturingStub do
   end
 end
 
+defmodule SimplyPut.LLM.BoundaryScoreStub do
+  @moduledoc false
+  @behaviour SimplyPut.LLM
+
+  alias SimplyPut.JudgeScore
+  alias SimplyPut.LLM.Stub
+
+  # Judge axes are read from the app env so one stub covers both boundary
+  # cases (all-3 clears, a 2 on any axis does not).
+  @impl true
+  def rewrite(text, opts), do: Stub.rewrite(text, opts)
+
+  @impl true
+  def judge(original, rewrite), do: Stub.judge(original, rewrite)
+
+  @impl true
+  def score(_original, _rewrite) do
+    Application.get_env(:simply_put, :boundary_axes, %{simplicity: 3, fidelity: 3, fluency: 3})
+    |> JudgeScore.parse()
+  end
+end
+
 defmodule SimplyPut.PlainishTest do
   use ExUnit.Case, async: true
 
@@ -151,6 +173,32 @@ defmodule SimplyPut.PlainishTest do
 
       assert {:hold, %Result{status: :held, judge_score: nil, run_mode: :self_refine}} =
                Plainish.run(unreachable, max_attempts: 3, run_mode: :self_refine)
+    end
+  end
+
+  # The judge-pass threshold is `>= 3` on every axis. Only stub fixtures
+  # returning 4/5 exercise it elsewhere, so an off-by-one (flipping `>=` to
+  # `>`, or moving the threshold) would slip through. Pin the exact boundary.
+  describe "judge-pass threshold boundary" do
+    setup do
+      Application.put_env(:simply_put, :llm, SimplyPut.LLM.BoundaryScoreStub)
+
+      on_exit(fn ->
+        Application.delete_env(:simply_put, :llm)
+        Application.delete_env(:simply_put, :boundary_axes)
+      end)
+    end
+
+    test "a score of exactly 3 on every axis clears (status :passed)" do
+      Application.put_env(:simply_put, :boundary_axes, %{simplicity: 3, fidelity: 3, fluency: 3})
+
+      assert {:ok, %Result{status: :passed}} = Plainish.run(@complex_fixture)
+    end
+
+    test "a score of 2 on any one axis does not clear (status :held)" do
+      Application.put_env(:simply_put, :boundary_axes, %{simplicity: 2, fidelity: 3, fluency: 3})
+
+      assert {:hold, %Result{status: :held}} = Plainish.run(@complex_fixture)
     end
   end
 end
