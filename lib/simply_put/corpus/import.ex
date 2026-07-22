@@ -60,14 +60,7 @@ defmodule SimplyPut.Corpus.Import do
   defp import_rows(header, rows, split) do
     case column_indices(header) do
       {:ok, cols} ->
-        rows
-        |> Enum.reduce_while(0, fn row, count ->
-          case insert_row(row, cols, split) do
-            {:ok, _item} -> {:cont, count + 1}
-            {:error, reason} -> {:halt, {:error, reason}}
-          end
-        end)
-        |> case do
+        case insert_all_rows(rows, cols, split) do
           {:error, reason} -> Repo.rollback(reason)
           count -> count
         end
@@ -75,6 +68,15 @@ defmodule SimplyPut.Corpus.Import do
       {:error, reason} ->
         Repo.rollback(reason)
     end
+  end
+
+  defp insert_all_rows(rows, cols, split) do
+    Enum.reduce_while(rows, 0, fn row, count ->
+      case insert_row(row, cols, split) do
+        {:ok, _item} -> {:cont, count + 1}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
   end
 
   defp column_indices(header) do
