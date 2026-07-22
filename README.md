@@ -128,7 +128,6 @@ the earlier 30-item bounded card is
 | faithfulness (source to candidate) | 0.889 | 0.930 | 0.889 |
 | omission (candidate to source) | 0.901 | 0.931 | 0.898 |
 | SLE (simplicity) | 2.17 | 1.79 | 2.12 |
-| BERTScore F1 | 0.998 | 0.998 | 0.998 |
 | SARI | 0.400 | 0.403 | 0.398 |
 
 The two gated modes sit at 7th grade and clear the 8th-grade ceiling
@@ -150,7 +149,15 @@ this model pairing. The honest reading is parity. Keeping the axes separate
 and testing the difference is what makes that visible; a blended verdict
 would have buried it.
 
-Caveats: BERTScore sits near 0.998 for every mode and barely discriminates.
+One metric ran and earned its way out of the table. BERTScore F1 reads
+0.998 for all three modes, a flat null. Cosine similarity between
+sentence embeddings saturates when candidate and reference share most of
+their content, which every readable rewrite of a short sentence does, so
+the axis cannot separate the modes. It stays in the harness
+(`SimplyPut.MetricProvider.BertScore`) as a wired native-Bumblebee metric,
+but a number that never moves is reported as a null, not shown alongside
+the axes that discriminate.
+
 The parity result is tied to this exact generator and judge pairing and to
 the current feedback prompt.
 

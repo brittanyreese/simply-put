@@ -38,8 +38,9 @@ real run.
 | faithfulness (source to candidate) | 0.889 (0.868-0.908) | 0.930 (0.913-0.945) | 0.889 (0.868-0.909) |
 | omission (candidate to source) | 0.901 | 0.931 | 0.898 |
 | SLE (simplicity) | 2.17 (2.06-2.28) | 1.79 (1.65-1.92) | 2.12 (2.00-2.24) |
-| BERTScore F1 | 0.998 | 0.998 | 0.998 |
 | SARI | 0.400 | 0.403 | 0.398 |
+
+BERTScore F1 is omitted from the table as a documented null. See below.
 
 ## Gate outcomes
 
@@ -92,9 +93,20 @@ the BEAM heap. RSS is the number a deploy target must budget for, not the
 BEAM figure. Measured 2026-07-22 with a one-item iterative run after a warm
 (cached) checkpoint load.
 
+## BERTScore: a documented null
+
+BERTScore F1 reads 0.998 for all three modes (95% CI 0.998 to 0.999), a
+flat null that cannot separate them. The cause is the metric, not the
+pipeline: cosine similarity between pooled sentence embeddings saturates
+near 1.0 when candidate and reference share most of their content, which
+every readable rewrite of a short sentence does. The metric stays wired in
+the harness (`SimplyPut.MetricProvider.BertScore`, real Bumblebee
+inference) so the native code still runs, but a number
+that never moves belongs in a null note, not in the results table beside
+the axes that discriminate.
+
 ## Caveats
 
-- BERTScore sits near 0.998 for every mode and barely discriminates.
 - The parity result is tied to this exact generator and judge pairing and
   to the current feedback prompt. A stronger generator or a different
   prompt could move it.
