@@ -190,9 +190,10 @@ defmodule SimplyPutWeb.RunsLive do
   defp run_mode_label(nil), do: "-"
   defp run_mode_label(run_mode), do: run_mode
 
-  # Judge is opt-in (`deps[:judge]`, default off) -- most rows have no
-  # verdict. `Map.get/2` (not dot-access) so rows from before this column
-  # existed (e.g. broadcast payloads in tests) don't raise KeyError.
+  # Verdict is derived from the judge score (the gated modes set it once the
+  # structural gate passes); self_refine and gate-failed rows have none.
+  # `Map.get/2` (not dot-access) so rows without the field (e.g. broadcast
+  # payloads in tests) don't raise KeyError.
   defp verdict_label(row) do
     case meaning_preserved(Map.get(row, :verdict)) do
       true -> "preserved"

@@ -82,11 +82,11 @@ defmodule SimplyPut.Plainish do
   `opts[:run_mode]` selects one of the three modes documented above
   (default `:iterative`).
 
-  Independently of `run_mode`, `opts[:deps][:judge]` (via
-  `Application.get_env(:simply_put, :deps, [])`) still controls the legacy
-  binary `verdict` field for backward compatibility with `RewriteWorker`
-  and the `/runs` dashboard -- unrelated to the new gate/judge-in-loop
-  restructure above, and untouched by it.
+  The `verdict` field (`%{fk_pass, meaning_preserved}`) read by
+  `RewriteWorker` and the `/runs` dashboard is derived from the same judge
+  score, not a second model call: `meaning_preserved` is the fidelity axis
+  clearing the pass threshold. It is present whenever a judge score is (the
+  gated modes, once the structural gate passes) and `nil` otherwise.
   """
   @spec run(String.t(), keyword()) ::
           {:ok, Result.t()} | {:hold, Result.t()} | {:error, term()}
@@ -96,11 +96,7 @@ defmodule SimplyPut.Plainish do
     run_mode = Keyword.get(opts, :run_mode, :iterative)
     fk_before = Readability.flesch_kincaid(text)
 
-    case attempt(text, text, fk_before, target, max_attempts, 1, run_mode) do
-      {:ok, result} -> {:ok, maybe_judge(result, text)}
-      {:hold, result} -> {:hold, maybe_judge(result, text)}
-      {:error, reason} -> {:error, reason}
-    end
+    attempt(text, text, fk_before, target, max_attempts, 1, run_mode)
   end
 
   defp attempt(
@@ -257,32 +253,17 @@ defmodule SimplyPut.Plainish do
       text_out: text_out,
       run_mode: run_mode,
       gate_passed: gate_passed?,
-      judge_score: judge_score
+      judge_score: judge_score,
+      verdict: verdict_from(status, judge_score)
     }
   end
 
-  defp maybe_judge(result, original_text) do
-    if judge_enabled?() do
-      case LLM.judge(original_text, result.text_out) do
-        {:ok, %{verdict: verdict}} ->
-          %{
-            result
-            | verdict: %{
-                fk_pass: result.status == :passed,
-                meaning_preserved: verdict == :preserved
-              }
-          }
+  # meaning_preserved reads the judge score's fidelity axis (does the rewrite
+  # keep the original's facts) against the same pass threshold. The two axes
+  # stay independent: the FK gate can pass while meaning is lost, or the reverse.
+  defp verdict_from(_status, nil), do: nil
 
-        {:error, reason} ->
-          Logger.warning("judge call failed, result has no verdict: #{inspect(reason)}")
-          result
-      end
-    else
-      result
-    end
-  end
-
-  defp judge_enabled? do
-    :simply_put |> Application.get_env(:deps, []) |> Keyword.get(:judge, false)
+  defp verdict_from(status, %JudgeScore{fidelity: fidelity}) do
+    %{fk_pass: status == :passed, meaning_preserved: fidelity >= @judge_threshold}
   end
 end

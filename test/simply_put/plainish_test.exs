@@ -6,9 +6,6 @@ defmodule SimplyPut.LLM.FailingStub do
   def rewrite(_text, _opts), do: {:error, :boom}
 
   @impl true
-  def judge(_original, _rewrite), do: {:error, :boom}
-
-  @impl true
   def score(_original, _rewrite), do: {:error, :boom}
 end
 
@@ -23,9 +20,6 @@ defmodule SimplyPut.LLM.CapturingStub do
     send(self(), {:rewrite_opts, opts})
     Stub.rewrite(text, opts)
   end
-
-  @impl true
-  def judge(original, rewrite), do: Stub.judge(original, rewrite)
 
   @impl true
   def score(original, rewrite) do
@@ -45,9 +39,6 @@ defmodule SimplyPut.LLM.BoundaryScoreStub do
   # cases (all-3 clears, a 2 on any axis does not).
   @impl true
   def rewrite(text, opts), do: Stub.rewrite(text, opts)
-
-  @impl true
-  def judge(original, rewrite), do: Stub.judge(original, rewrite)
 
   @impl true
   def score(_original, _rewrite) do
@@ -74,22 +65,18 @@ defmodule SimplyPut.PlainishTest do
     assert result.fk_after <= 6.0
     assert result.fk_before > result.fk_after
     assert result.attempts >= 1
-    assert result.verdict == nil
+    assert result.verdict == %{fk_pass: true, meaning_preserved: true}
   end
 
-  test "judge OFF (default) leaves the result byte-identical to the pre-judge path" do
-    refute Application.get_env(:simply_put, :deps, [])[:judge]
-
-    assert {:ok, %Result{verdict: nil}} = Plainish.run(@complex_fixture)
-    assert {:hold, %Result{verdict: nil}} = Plainish.run("Extraordinarily discombobulated.")
-  end
-
-  test "judge ON attaches a dual verdict via the stub judge" do
-    Application.put_env(:simply_put, :deps, judge: true)
-    on_exit(fn -> Application.delete_env(:simply_put, :deps) end)
-
+  test "verdict derives from the judge score's fidelity axis on a gated pass" do
+    # No second judge call: meaning_preserved is fidelity >= threshold from the
+    # same score that gated the pass.
     assert {:ok, %Result{verdict: %{fk_pass: true, meaning_preserved: true}}} =
              Plainish.run(@complex_fixture)
+  end
+
+  test "no verdict when the gate never passes (no judge score to derive from)" do
+    assert {:hold, %Result{verdict: nil}} = Plainish.run("Extraordinarily discombobulated.")
   end
 
   test "holds when the rewrite can't reach target within max_attempts" do
