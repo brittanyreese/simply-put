@@ -57,7 +57,10 @@ defmodule SimplyPut.LLM.BoundaryScoreStub do
 end
 
 defmodule SimplyPut.PlainishTest do
-  use ExUnit.Case, async: true
+  # async: false -- these tests mutate global Application env (:llm, :deps,
+  # :boundary_axes), which is VM-wide, not process-scoped. Running them
+  # concurrently with other modules that read those keys would race.
+  use ExUnit.Case, async: false
 
   alias SimplyPut.Plainish
   alias SimplyPut.Plainish.Result
