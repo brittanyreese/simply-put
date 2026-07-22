@@ -2,6 +2,8 @@
 # Simply Put
 <!-- vale ai-tells.RestatementMarkers = YES -->
 
+[![CI](https://github.com/brittanyreese/simply-put/actions/workflows/ci.yml/badge.svg)](https://github.com/brittanyreese/simply-put/actions/workflows/ci.yml)
+
 A plain-language readability rig. Text goes in, a rewrite comes out at or
 below a target reading grade, and the claim is checked by a pure function
 you can read yourself, not by trusting a model's word for it.
@@ -18,7 +20,7 @@ mix deps.get && mix test
 
 That runs a real rewrite pipeline against the deterministic Flesch-Kincaid
 gate below, using a stub adapter (no network calls), and comes back green:
-148 tests, 0 failures (8 excluded). Live-API tests are tagged
+148 tests, 0 failures (7 excluded). Live-API tests are tagged
 `:live` and excluded by default; run them with `mix test --only live` (see
 [Judge and the real adapter](#judge-and-the-real-adapter)). Tests that load a
 real embedding model are tagged `:bumblebee_models` and excluded the same way.
