@@ -62,6 +62,30 @@ In one line, the judge tracks meaning and fluency better than humans track each
 other, and simplicity worse. The gate fail is not a scoring artifact, but its
 severity was overstated by comparing 0.24 to 1.0 instead of to 0.43.
 
+## Same estimator, judge as one more rater
+
+The comparison above still mixes two estimators, Krippendorff for the humans
+and weighted Cohen for the judge. To close that, score the 100 pairs with the
+judge (`scripts/judge_score_asset.exs`, 100 live calls, cross-vendor
+`anthropic/claude-haiku-4.5`), add each judge rating as a 16th rater on the
+1-5 scale, and recompute the same Krippendorff alpha. The delta is how much
+the judge moves the agreement of a pool it joins.
+
+| aspect | alpha humans (15) | alpha humans + judge (16) | delta |
+|--------|-------------------|---------------------------|-------|
+| fidelity | 0.563 | 0.566 | +0.003 |
+| fluency | 0.562 | 0.562 | -0.000 |
+| simplicity | 0.429 | 0.383 | -0.046 |
+
+On the two well-defined axes the judge behaves like one more competent
+annotator, and fidelity even ticks up. Simplicity is the exception. Agreement
+falls 0.046 once the judge joins, which means it disagrees more than a human
+rater would. The cross-aspect contrast is a built-in control, because
+the same judge inserted the same way pushes one axis up while pulling another
+down. An artifact of adding any rater would move all three the same direction.
+So this reproduces the earlier finding under one estimator throughout, closing
+the Cohen-versus-Krippendorff caveat rather than only noting it.
+
 ## Bearing on the gate
 
 - It does not move the gate. Simplicity still fails against the 0.41 Landis-Koch
@@ -70,7 +94,7 @@ severity was overstated by comparing 0.24 to 1.0 instead of to 0.43.
   about 0.43, not the 0.7-plus the other two axes reach, and the judge's
   shortfall is a roughly 0.19 gap below the human bar, not a 0.76 gap below a
   perfect one.
-- A stricter follow-up, if wanted: compute judge-vs-human with the same
-  Krippendorff estimator (treating the judge as one more rater) so the two
-  columns use one method end to end. The Cohen-vs-Krippendorff mismatch is small
-  at these rater counts but is a real caveat on the head-to-head.
+- The unified-estimator check above (judge as a 16th rater, one method
+  throughout) reaches the same verdict: near-zero delta on fidelity and
+  fluency, -0.046 on simplicity. The judge is a below-human rater on
+  simplicity and a human-level one on the other two axes.
