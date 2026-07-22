@@ -17,11 +17,31 @@ simplicity comparison is apples-to-apples.
 Usage: python3 asset_human_agreement.py <asset_ratings.json>
 """
 
+import csv
+import hashlib
 import json
 import sys
 from collections import defaultdict
 
 ASPECT_NAMES = {0: "meaning/fidelity", 1: "fluency", 2: "simplicity"}
+# Judge CSV column feeding each raw aspect (0=meaning->fidelity, 1=fluency,
+# 2=simplicity), so the judge joins to the right axis.
+ASPECT_JUDGE_COLUMN = {0: "fidelity", 1: "fluency", 2: "simplicity"}
+
+
+def item_id(original, simplification):
+    # Matches scripts/pivot_asset_labels.py and scripts/judge_score_asset.exs.
+    return "asset_" + hashlib.sha1((original + simplification).encode()).hexdigest()[:12]
+
+
+def load_judge(path):
+    scores = {}
+    with open(path) as f:
+        for row in csv.DictReader(f):
+            scores[row["item_id"]] = {
+                k: int(row[k]) for k in ("simplicity", "fidelity", "fluency")
+            }
+    return scores
 
 
 def bucket(score):
@@ -83,32 +103,49 @@ def _self_check():
 def main():
     _self_check()
     path = sys.argv[1]
+    judge = load_judge(sys.argv[2]) if len(sys.argv) > 2 else None
     with open(path) as f:
         rows = json.load(f)
 
-    # Group ratings by (aspect, item) -> list of worker ratings.
+    # Group ratings by (aspect, item_id) -> list of worker ratings.
     raw = defaultdict(lambda: defaultdict(list))
     buck = defaultdict(lambda: defaultdict(list))
     workers = defaultdict(set)
     for r in rows:
         a = r["aspect"]
-        key = (r["original"], r["simplification"])
+        key = item_id(r["original"], r["simplification"])
         raw[a][key].append(r["rating"])
         buck[a][key].append(bucket(r["rating"]))
         workers[a].add(r["worker_id"])
 
-    print(f"records={len(rows)}")
+    print(f"records={len(rows)}" + (f" judge_items={len(judge)}" if judge else ""))
     for a in sorted(ASPECT_NAMES):
         units_raw = list(raw[a].values())
         units_buck = list(buck[a].values())
         raters = [len(u) for u in units_raw]
         alpha_raw = krippendorff_alpha_interval(units_raw)
         alpha_buck = krippendorff_alpha_interval(units_buck)
-        print(
+        line = (
             f"aspect={ASPECT_NAMES[a]:16s} items={len(units_raw)} "
             f"raters/item~{min(raters)}-{max(raters)} distinct_workers={len(workers[a])} "
             f"alpha_raw0_100={alpha_raw:.3f} alpha_1_5buckets={alpha_buck:.3f}"
         )
+        if judge:
+            # Add the judge as one more rater on the 1-5 bucket scale, per item,
+            # then recompute alpha with the same estimator. Delta below zero
+            # means the judge disagrees more than a human rater would.
+            col = ASPECT_JUDGE_COLUMN[a]
+            with_judge = [
+                buck[a][iid] + [judge[iid][col]] for iid in buck[a] if iid in judge
+            ]
+            humans_only = [buck[a][iid] for iid in buck[a] if iid in judge]
+            a15 = krippendorff_alpha_interval(humans_only)
+            a16 = krippendorff_alpha_interval(with_judge)
+            line += (
+                f" | judge_join={len(with_judge)} alpha_humans={a15:.3f} "
+                f"alpha_humans+judge={a16:.3f} delta={a16 - a15:+.3f}"
+            )
+        print(line)
 
 
 if __name__ == "__main__":
