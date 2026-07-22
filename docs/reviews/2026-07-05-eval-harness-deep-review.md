@@ -46,7 +46,7 @@ These affect whether gate outputs can be reported as a health-literacy validatio
 | C1 | Medium/High | `/runs` runs two full-table `Repo.all(RewriteEvaluation)` scans into memory on every render, on an append-only table that grows with every eval run. | `runs_live.ex:149,168` | Push both into SQL: `DISTINCT ON (corpus_item_id) ... ORDER BY inserted_at DESC` for latest-per-item, `group_by: run_mode` for the summary. |
 | C2 | Medium | `rewrite_evaluations.corpus_item_id` has no index and no `on_delete`, unlike the sibling `run_results` FK. | `migration 20260705003056:6` | Add the index and pick `on_delete` deliberately. |
 | C3 | Medium | No index on `corpus_items(source, split)`, the actual frozen-test-split query. | `eval_runner.ex:88` | `create index(:corpus_items, [:source, :split])`. |
-| C4 | Low/Medium | CSV importers `File.read!` raise on a missing path despite an `{:ok, _} | {:error, _}` spec. | `corpus/import.ex:41`, `human_labels/import.ex:35` | Use `File.read/1` and wrap the error. |
+| C4 | Low/Medium | CSV importers `File.read!` raise on a missing path despite an `{:ok, _}` \| `{:error, _}` spec. | `corpus/import.ex:41`, `human_labels/import.ex:35` | Use `File.read/1` and wrap the error. |
 | C5 | Low/Medium | Oban retry can double-write an eval row for the same item and batch (documented, not enforced). | `rewrite_worker.ex:78` | Add an idempotency key on `[corpus_item_id, batch_id, run_mode]`. |
 | C6 | Info | The frozen-test-split guard is app-layer only. `update_all` or raw SQL bypasses it. | `corpus_item.ex:49` | Acceptable for portfolio scope. A DB check constraint would make it hard to bypass. |
 

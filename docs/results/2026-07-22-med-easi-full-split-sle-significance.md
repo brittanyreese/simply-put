@@ -80,7 +80,10 @@ verdict would have buried this. Separate axes plus a paired test surface it.
 
 The kappa gate repeats the calibration finding: judge-human agreement is
 substantial on fidelity (0.77) and fluency (0.70), only fair on simplicity
-(0.24), the axis the deterministic gate owns rather than the judge.
+(0.24), the axis the deterministic gate owns rather than the judge. These
+per-axis figures are a live re-score of the ASSET set (about 100 judge calls),
+so they drift by roughly plus or minus 0.03 between reprints. The ordering
+(simplicity weakest) is stable. The exact number is not a fixed reference.
 
 ## Memory footprint (Phase M)
 
