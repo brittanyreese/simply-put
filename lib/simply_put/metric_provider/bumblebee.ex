@@ -9,7 +9,7 @@ defmodule SimplyPut.MetricProvider.Bumblebee do
   real checkpoints against this module, so its checkpoint-loading path is
   untested here. Wire it in via `config :simply_put, :metric_provider,
   SimplyPut.MetricProvider.Bumblebee` once verified against a live
-  checkpoint download (see the notes's "Checkpoints to pin" section).
+  checkpoint download.
 
   `entail/2` and `sle/1` map directly onto stock Bumblebee task servings.
   `bertscore/2` and `qafacteval/2` are documented simplifications of the

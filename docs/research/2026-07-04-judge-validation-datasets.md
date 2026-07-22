@@ -16,7 +16,7 @@ Judge-vs-human Cohen's kappa (Phase G) does not require new manual annotation. T
 
 1. Use ASSET as the primary, zero-friction judge calibration set. Downloadable today, clean three-axis fields matching the simplicity/fidelity/fluency rubric already in the plan. Compute judge-vs-human kappa against it as a general-domain construct-validity check built on ratings that already exist.
 2. Pursue PLABA's TREC track data as the domain-relevant check. Check `trec.nist.gov/data/plaba.html` directly for a per-sentence judgment file, or contact the track organizers if only system-level averages are public. Acquiring it is a download-or-request job, which keeps the effort in data engineering where it belongs.
-3. Treat SimpEval as a fallback second general-domain set if a larger sample is wanted, with the ICC caveat noted in the plan/notes.
+3. Treat SimpEval as a fallback second general-domain set if a larger sample is wanted, given its documented low inter-annotator reliability (ICC roughly 0.2 to 0.3).
 4. Drop Med-EASi and Cochrane PLS as human-rating sources. Neither has a usable released dataset for this purpose.
 5. Treat new manual annotation as a fallback. Reach for it only if the PLABA item-level request fails and ASSET/SimpEval coverage of the health domain is judged too thin, and even then as a small supplementary batch rather than a full label set.
 

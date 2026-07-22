@@ -7,8 +7,7 @@ defmodule SimplyPut.LLM.OpenRouter do
 
   Rewrite and judge default to different model vendors on purpose: a judge
   from the rewriter's own vendor family inflates "meaning preserved"
-  verdicts (self-preference bias, Wataoka et al. 2024 -- see plan
-  notes, deferred from the methodology-grounding pass).
+  verdicts (self-preference bias, Wataoka et al. 2024).
   """
 
   @behaviour SimplyPut.LLM
