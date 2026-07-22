@@ -60,7 +60,10 @@ verdict would have buried that. Separate axes surface it.
 The kappa gate repeats the finding from the calibration card
 (`2026-07-15-asset-judge-kappa.md`). Judge-human agreement is substantial
 on fidelity and fluency but only fair on simplicity, the axis the
-deterministic gate owns rather than the judge.
+deterministic gate owns rather than the judge. The per-axis figures are a
+live re-score of the ASSET set (about 100 judge calls) and drift by roughly
+plus or minus 0.03 between reprints, so the exact number differs from the
+other cards' reprints. The ordering (simplicity weakest) is what holds.
 
 ## Caveats
 
