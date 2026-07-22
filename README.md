@@ -115,40 +115,44 @@ comprehension test.
 The full canonical Med-EASi test split, 300 items per mode, ran under all
 three modes in one batch. Metrics came from real Bumblebee inference with
 an OpenRouter judge. Method and full numbers live in
-[`docs/results/2026-07-15-med-easi-full-split.md`](docs/results/2026-07-15-med-easi-full-split.md).
-The earlier 30-item bounded card is
+[`docs/results/2026-07-22-med-easi-full-split-sle-significance.md`](docs/results/2026-07-22-med-easi-full-split-sle-significance.md).
+The prior card without SLE or significance is
+[`docs/results/2026-07-15-med-easi-full-split.md`](docs/results/2026-07-15-med-easi-full-split.md);
+the earlier 30-item bounded card is
 [`docs/results/2026-07-08-med-easi-bounded-card.md`](docs/results/2026-07-08-med-easi-bounded-card.md).
 
 | metric | iterative | single_shot | self_refine |
 |--------|-----------|-------------|-------------|
-| FK grade | 7.03 | 8.38 | 7.04 |
-| grade <= 8 compliance | 72.7% | 51.0% | 74.3% |
-| faithfulness (source to candidate) | 0.886 | 0.927 | 0.893 |
-| omission (candidate to source) | 0.891 | 0.932 | 0.899 |
+| FK grade | 7.12 | 8.43 | 7.17 |
+| grade <= 8 compliance | 69.0% | 47.7% | 70.7% |
+| faithfulness (source to candidate) | 0.889 | 0.930 | 0.889 |
+| omission (candidate to source) | 0.901 | 0.931 | 0.898 |
+| SLE (simplicity) | 2.17 | 1.79 | 2.12 |
 | BERTScore F1 | 0.998 | 0.998 | 0.998 |
-| SARI | 0.401 | 0.403 | 0.393 |
+| SARI | 0.400 | 0.403 | 0.398 |
 
 The two gated modes sit at 7th grade and clear the 8th-grade ceiling
-72.7% and 74.3% of the time, against 51.0% for ungated single_shot.
-Iterative against single_shot is a two-axis tradeoff, reported as a
-dominance relation rather than one blended score (see
-[ADR-0005](docs/adr/0005-separate-axes-not-blended-verdict.md)). The gate
-buys 21.7 points of grade compliance for 0.041 of faithfulness. Against
-self_refine the full split settles what n=30 left open, and the answer
-cuts against the pipeline's own favorite mode. self_refine edges iterative
-on both axes by margins inside overlapping CIs, so external tool feedback
-shows no measurable advantage over model self-critique on this corpus with
-this model pairing. Keeping the axes separate is what makes that visible.
+69.0% and 70.7% of the time, against 47.7% for ungated single_shot. SLE, a
+model-based simplicity score, agrees: the gated modes read simpler (2.17,
+2.12) than single_shot (1.79). Iterative against single_shot is a two-axis
+tradeoff, reported as a dominance relation rather than one blended score
+(see [ADR-0005](docs/adr/0005-separate-axes-not-blended-verdict.md)). The
+gate buys 21.3 points of grade compliance for 0.040 of faithfulness, and a
+paired bootstrap significance test puts both differences outside their 95%
+CIs, so the tradeoff is real, not sampling noise.
 
-Caveats on this recorded run: SLE is nil throughout, and the dominance
-relation compares point estimates only. Both have since been addressed and
-are not yet folded into the numbers above. The SLE tokenizer now loads (it
-needs `roberta-base`'s tokenizer, not `sle-base`'s own, and is verified
-against a live checkpoint), and the harness now reports a paired bootstrap
-significance test on each dominance axis, so the self_refine parity above is
-now checkable rather than asserted. A refreshed card that includes SLE and
-the significance verdicts is pending a rerun. BERTScore sits near 0.998 for
-every mode and barely discriminates.
+Against self_refine the significance test settles what n=30 and point
+estimates left open, and the answer cuts against the pipeline's own
+favorite mode. Neither the grade difference (-1.7 points) nor the
+faithfulness difference (+0.001) clears its CI, so external tool feedback
+shows no measurable advantage over model self-critique on this corpus with
+this model pairing. The honest reading is parity. Keeping the axes separate
+and testing the difference is what makes that visible; a blended verdict
+would have buried it.
+
+Caveats: BERTScore sits near 0.998 for every mode and barely discriminates.
+The parity result is tied to this exact generator and judge pairing and to
+the current feedback prompt.
 
 The judge is calibrated against human ratings, not taken on faith. On 100
 ASSET pairs, quadratically-weighted kappa reaches 0.77 for fidelity and
