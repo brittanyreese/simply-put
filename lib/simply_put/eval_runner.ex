@@ -114,6 +114,88 @@ defmodule SimplyPut.EvalRunner do
     end
   end
 
+  @doc """
+  Paired significance behind `dominance/1`'s point-estimate relation. For
+  each control, the per-item difference (iterative minus control, same
+  corpus item under both run_modes) on each axis, its mean, a 95% paired
+  bootstrap CI, and whether that CI excludes zero.
+
+  This is what tells an `:iterative_dominated`/`:tradeoff` relation apart
+  from noise: `dominance/1` compares two means, but a 1.6-point edge inside
+  overlapping CIs is not an edge. `significant: false` means the observed
+  difference on that axis is indistinguishable from zero at 95%.
+
+  Grade compliance is paired as a per-item 0/1 FK-ceiling indicator, so its
+  mean difference is the compliance-rate gap; faithfulness pairs the raw
+  entailment scores. An axis with no paired data (a control did not run, or
+  every pair is nil) comes back `nil`.
+  """
+  @spec significance(String.t()) :: %{
+          (:single_shot | :self_refine) => %{
+            grade_compliance: map() | nil,
+            faithfulness: map() | nil
+          }
+        }
+  def significance(batch_id) do
+    by_mode =
+      batch_id
+      |> rows()
+      |> Enum.group_by(& &1.run_mode)
+      |> Map.new(fn {mode, rows} -> {mode, Map.new(rows, &{&1.corpus_item_id, &1})} end)
+
+    iterative = Map.get(by_mode, :iterative, %{})
+
+    for control <- [:single_shot, :self_refine], into: %{} do
+      control_rows = Map.get(by_mode, control, %{})
+      pairs = paired_rows(iterative, control_rows)
+
+      {control,
+       %{
+         grade_compliance: diff_significance(pairs, &compliance_indicator/1),
+         faithfulness: diff_significance(pairs, &faithfulness_float/1)
+       }}
+    end
+  end
+
+  # Inner join on corpus_item_id: only items scored under BOTH run_modes.
+  defp paired_rows(iterative, control) do
+    for {item_id, iter_row} <- iterative, ctrl_row = control[item_id], into: [] do
+      {iter_row, ctrl_row}
+    end
+  end
+
+  defp diff_significance(pairs, extract) do
+    diffs =
+      pairs
+      |> Enum.map(fn {iter_row, ctrl_row} ->
+        with iter_val when not is_nil(iter_val) <- extract.(iter_row),
+             ctrl_val when not is_nil(ctrl_val) <- extract.(ctrl_row) do
+          iter_val - ctrl_val
+        else
+          _ -> nil
+        end
+      end)
+      |> Enum.reject(&is_nil/1)
+
+    case diffs do
+      [] ->
+        nil
+
+      diffs ->
+        {lower, upper} = Stats.bootstrap_ci(diffs, 1000, 0.95)
+        mean = Enum.sum(diffs) / length(diffs)
+        %{diff: mean, ci_95: {lower, upper}, significant: lower > 0.0 or upper < 0.0}
+    end
+  end
+
+  defp compliance_indicator(%{fk_after_bp: nil}), do: nil
+
+  defp compliance_indicator(%{fk_after_bp: bp}),
+    do: if(bp / 100 <= @grade_ceiling, do: 1.0, else: 0.0)
+
+  defp faithfulness_float(%{faithfulness_score: nil}), do: nil
+  defp faithfulness_float(%{faithfulness_score: score}), do: Decimal.to_float(score)
+
   defp record_one(item, run_mode, batch_id) do
     case Plainish.run(item.source_text, run_mode: run_mode) do
       {status, result} when status in [:ok, :hold] -> Evaluation.record(item, result, batch_id)

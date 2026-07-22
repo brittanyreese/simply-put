@@ -169,6 +169,67 @@ defmodule SimplyPut.EvalRunnerTest do
     end
   end
 
+  defp insert_eval!(item, batch_id, run_mode, fk_after_bp, faithfulness) do
+    %RewriteEvaluation{}
+    |> RewriteEvaluation.changeset(%{
+      corpus_item_id: item.id,
+      batch_id: batch_id,
+      run_mode: run_mode,
+      fk_before_bp: 1200,
+      fk_after_bp: fk_after_bp,
+      smog_bp: 1000,
+      target_bp: 800,
+      structural_gate_passed: true,
+      attempts: 1,
+      text_out: "out",
+      faithfulness_score: Decimal.from_float(faithfulness)
+    })
+    |> Repo.insert!()
+  end
+
+  describe "significance/1" do
+    test "flags a difference as significant when every paired item moves the same way" do
+      batch_id = "sig-batch"
+      # Two items, iterative always compliant + more faithful, control never.
+      for item <- [insert_test_item!(), insert_test_item!(%{title: "Second"})] do
+        insert_eval!(item, batch_id, :iterative, 700, 0.9)
+        insert_eval!(item, batch_id, :single_shot, 1000, 0.7)
+      end
+
+      %{single_shot: %{grade_compliance: grade, faithfulness: faith}} =
+        EvalRunner.significance(batch_id)
+
+      assert grade.diff == 1.0
+      assert grade.significant
+      assert faith.significant
+      assert_in_delta faith.diff, 0.2, 0.0001
+    end
+
+    test "not significant when the paired difference is zero on every item" do
+      batch_id = "null-batch"
+
+      for item <- [insert_test_item!(), insert_test_item!(%{title: "Second"})] do
+        insert_eval!(item, batch_id, :iterative, 800, 0.8)
+        insert_eval!(item, batch_id, :self_refine, 800, 0.8)
+      end
+
+      %{self_refine: %{grade_compliance: grade, faithfulness: faith}} =
+        EvalRunner.significance(batch_id)
+
+      refute grade.significant
+      refute faith.significant
+    end
+
+    test "nil axis when a control did not run" do
+      batch_id = "solo-batch"
+      item = insert_test_item!()
+      insert_eval!(item, batch_id, :iterative, 700, 0.9)
+
+      assert %{single_shot: %{grade_compliance: nil, faithfulness: nil}} =
+               EvalRunner.significance(batch_id)
+    end
+  end
+
   describe "dominance/1" do
     test "iterative_dominates when it wins or ties both axes" do
       report = %{
