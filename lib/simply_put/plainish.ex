@@ -15,7 +15,7 @@ defmodule SimplyPut.Plainish do
       Negative control: shows what a naive non-iterative baseline scores.
     * `:self_refine` -- retries against the structural gate only, the
       external judge is never called (`judge_score` stays `nil`). Negative
-      control approximating "no external verifier" -- note: this
+      control approximating "no external verifier". This mode
       doesn't add a separate self-critique LLM call (the literature's
       literal Self-Refine loop), since the comparison this project needs is
       "external judge helps vs. doesn't," not self-critique fidelity. Add a

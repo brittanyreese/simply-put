@@ -40,8 +40,8 @@ defmodule SimplyPut.LLM.Stub do
     {:ok, rewritten}
   end
 
-  # note: fixed verdict, no semantic comparison -- real judge lands in
-  # OpenRouter adapter (3.1); the stub just exercises the deps[:judge] seam.
+  # Fixed verdict, no semantic comparison: the real judge lives in the
+  # OpenRouter adapter; the stub just exercises the deps[:judge] seam.
   @impl true
   def judge(_original, _rewrite) do
     {:ok, %{verdict: :preserved, rationale: "stub: no semantic check performed"}}
