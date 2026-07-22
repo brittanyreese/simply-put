@@ -1,3 +1,23 @@
+defmodule SimplyPut.FakeMetricProvider do
+  @moduledoc false
+  # Non-stub provider (so MetricProvider.simulated?/0 is false) returning
+  # canned scores, no checkpoint load. Lets a test exercise the real
+  # faithfulness_provider branch without network.
+  @behaviour SimplyPut.MetricProvider
+
+  @impl true
+  def entail(_premise, _hypothesis), do: {:ok, %{label: :entailment, score: 0.9}}
+
+  @impl true
+  def sle(_candidate), do: {:ok, 0.5}
+
+  @impl true
+  def qafacteval(_source, _candidate), do: {:ok, 0.8}
+
+  @impl true
+  def bertscore(_candidate, _reference), do: {:ok, %{precision: 0.9, recall: 0.9, f1: 0.9}}
+end
+
 defmodule SimplyPut.EvaluationTest do
   use ExUnit.Case, async: true
 
@@ -103,6 +123,19 @@ defmodule SimplyPut.EvaluationTest do
     assert {:ok, _} = Evaluation.record(item, fake_result(), "batch-2")
 
     assert Repo.aggregate(RewriteEvaluation, :count) == 2
+  end
+
+  test "non-stub provider logs the pinned checkpoint ids, not the bare metric names" do
+    Application.put_env(:simply_put, :metric_provider, SimplyPut.FakeMetricProvider)
+    on_exit(fn -> Application.delete_env(:simply_put, :metric_provider) end)
+
+    item = insert_corpus_item!()
+
+    assert {:ok, evaluation} = Evaluation.record(item, fake_result(), "batch-1")
+
+    # The pinned SummaC NLI checkpoint id, not the constant "summac+qafacteval".
+    assert evaluation.faithfulness_provider =~ "roberta-large-mnli"
+    refute evaluation.faithfulness_provider == "summac+qafacteval"
   end
 
   test "omits judge axes when judge_score is nil (e.g. self_refine run_mode)" do
