@@ -3,13 +3,13 @@ defmodule SimplyPut.MetricProvider.QAOverlap do
   Token-overlap F1 between two extracted answers to the same question.
   Pure string logic, fully testable without a model checkpoint.
 
-  ponytail: this is a simplified stand-in for QAFactEval's learned
+  Scope: this is a simplified stand-in for QAFactEval's learned
   LERC-QUIP answerability classifier (a BERT `[CLS]` embedding plus one
   linear layer, trained on human judgments -- see the MOCHA repo). The
-  real head needs a one-time PyTorch-to-Axon weight conversion this
-  environment can't perform (no network egress to fetch or inspect the
-  checkpoint in this session). Upgrade path: port LERC-QUIP's weights once
-  that conversion has been done and verified against reference scores;
+  real head needs a one-time PyTorch-to-Axon weight conversion, which
+  requires fetching and inspecting the checkpoint. Upgrade path: port
+  LERC-QUIP's weights once that conversion is done and verified against
+  reference scores;
   until then, token-overlap F1 between the source-answer and
   candidate-answer to the same generated question is the QA-based
   factuality signal.

@@ -4,7 +4,7 @@ defmodule SimplyPut.MetricProvider.BertScore do
   testable without a model checkpoint -- construct tensors by hand in
   tests; `SimplyPut.MetricProvider.Bumblebee` supplies real embeddings.
 
-  ponytail: this scores whole-sentence pooled embeddings (a single vector
+  Scope: this scores whole-sentence pooled embeddings (a single vector
   per text), not true token-level BERTScore (per-token greedy matching).
   Bumblebee's `text_embedding` task only exposes a pooled `:embedding`
   output, not per-token hidden states, without dropping to the raw Axon

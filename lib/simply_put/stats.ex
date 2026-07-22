@@ -3,11 +3,10 @@ defmodule SimplyPut.Stats do
   Judge-validation statistics: quadratically-weighted Cohen's kappa (for
   ordinal 1..5 ratings) and a percentile bootstrap confidence interval.
 
-  Quadratic weighting, not plain kappa: this session's research into the
-  human-label-variation literature (see the plan's scratchpad) found that
-  a subjective 1..5 rubric needs an ordinal-aware agreement measure -- a
-  1-vs-5 disagreement is worse than a 3-vs-4 one, and plain kappa treats
-  them identically.
+  Quadratic weighting, not plain kappa: a subjective 1..5 rubric needs an
+  ordinal-aware agreement measure. A 1-vs-5 disagreement is worse than a
+  3-vs-4 one, and plain kappa treats them identically. The human-label-
+  variation literature motivates this.
 
   Gotcha (verified while writing this module's tests, not just a footnote):
   kappa needs variance in BOTH raters' marginals. If one rater's ratings
