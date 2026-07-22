@@ -27,6 +27,7 @@ defmodule SimplyPut.Evaluation do
   """
 
   alias SimplyPut.MetricProvider
+  alias SimplyPut.MetricProvider.Bumblebee.Servings
   alias SimplyPut.Metrics
   alias SimplyPut.Readability
   alias SimplyPut.Repo
@@ -96,8 +97,14 @@ defmodule SimplyPut.Evaluation do
 
   # Recorded per row so a batch's provenance survives config changes: a
   # Stub-scored row must never claim it was measured by the real models.
+  # The non-stub value carries the pinned checkpoint ids, not just the
+  # metric names, so a row is a real reproducibility record.
   defp faithfulness_provider do
-    if MetricProvider.simulated?(), do: "stub", else: "summac+qafacteval"
+    if MetricProvider.simulated?() do
+      "stub"
+    else
+      "summac:#{Servings.checkpoint_id(:summac)}+qafacteval:#{Servings.checkpoint_id(:qa_extraction)}"
+    end
   end
 
   # NLI entailment probability that `hypothesis` follows from `premise`, folded
