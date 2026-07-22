@@ -2,8 +2,8 @@ defmodule SimplyPut.JudgeValidation do
   @moduledoc """
   Judge-vs-human and human-vs-human kappa, plus position-swap and
   verbosity-bias tests, over the ASSET/PLABA-labeled `human_labels`
-  subset. See `docs/research/2026-07-04-judge-validation-datasets.md` for
-  why these existing datasets instead of new manual annotation. The
+  subset, reusing existing labeled datasets rather than commissioning new
+  manual annotation. The
   human-vs-human ceiling is reported alongside judge-vs-human agreement
   because human raters disagree with each other too: judge kappa is read
   against that ceiling, not against 1.0.

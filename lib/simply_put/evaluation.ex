@@ -12,8 +12,7 @@ defmodule SimplyPut.Evaluation do
 
   `faithfulness_score` combines SummaC's entailment probability and
   QAFactEval's answer-overlap score (simple mean of the two, each already
-  0..1) since the schema has a single faithfulness column -- the
-  literature (see `docs/research/2026-07-04-bumblebee-vs-python-sidecar-metrics.md`)
+  0..1) since the schema has a single faithfulness column. The literature
   treats these as complementary rather than redundant, so combining them is
   more informative than picking one. Both run the entailment source ->
   candidate, so this axis catches unsupported *additions* (hallucination),

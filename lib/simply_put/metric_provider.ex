@@ -3,8 +3,7 @@ defmodule SimplyPut.MetricProvider do
   Adapter seam for model-based metrics: faithfulness (SummaC-style NLI
   entailment, QAFactEval-style QA-based factuality), semantic similarity
   (BERTScore), and reference-less simplicity (SLE). All four run natively
-  via `SimplyPut.MetricProvider.Bumblebee` (Phase M), not a remote service --
-  see `docs/research/2026-07-04-bumblebee-vs-python-sidecar-metrics.md`.
+  via `SimplyPut.MetricProvider.Bumblebee` (Phase M), not a remote service.
 
   Default (no config set) resolves to `SimplyPut.MetricProvider.Stub`, so
   `mix test` never needs to load a real model checkpoint. Phase M wires

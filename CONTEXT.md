@@ -1,7 +1,7 @@
 # Context
 
 Single-context repo. Domain vocabulary and decisions live here and in
-`docs/adr/`; see `docs/agents/domain.md` for how skills should consume them.
+`docs/adr/`.
 
 ## Glossary
 

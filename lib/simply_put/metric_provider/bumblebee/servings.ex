@@ -7,9 +7,8 @@ defmodule SimplyPut.MetricProvider.Bumblebee.Servings do
   first time any metric function is actually called.
 
   Checkpoint ids below name the exact HF repos the eval runs load (by
-  name, not revision-pinned). The rationale for mapping each metric to a
-  Bumblebee task shape is in
-  `docs/research/2026-07-04-bumblebee-vs-python-sidecar-metrics.md`.
+  name, not revision-pinned). Each metric maps onto a stock Bumblebee task
+  shape (text classification, embedding, generation, question answering).
   """
 
   use GenServer

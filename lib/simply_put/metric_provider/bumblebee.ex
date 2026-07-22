@@ -1,8 +1,7 @@
 defmodule SimplyPut.MetricProvider.Bumblebee do
   @moduledoc """
-  Native model-based metrics via Bumblebee/Nx/EXLA -- no external service.
-  See `docs/research/2026-07-04-bumblebee-vs-python-sidecar-metrics.md` for
-  the research behind this choice over a Python sidecar.
+  Native model-based metrics via Bumblebee/Nx/EXLA, no external service.
+  Chosen over a Python sidecar to keep the stack pure Elixir.
 
   Not the runtime default yet (`SimplyPut.MetricProvider` still defaults to
   `Stub`): this environment has no network egress to download and verify

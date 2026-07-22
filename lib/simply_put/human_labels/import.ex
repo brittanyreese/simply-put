@@ -2,8 +2,7 @@ defmodule SimplyPut.HumanLabels.Import do
   @moduledoc """
   CSV importer for existing human-labeled judge-calibration datasets
   (ASSET, PLABA TREC), so Phase G's kappa validation doesn't require new
-  manual annotation -- see
-  `docs/research/2026-07-04-judge-validation-datasets.md`.
+  manual annotation.
 
   Expected CSV columns (already pivoted to one row per rated item):
   `item_id,original,simplification,simplicity,fidelity,fluency,annotator`.
