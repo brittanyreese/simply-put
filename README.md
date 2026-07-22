@@ -116,6 +116,17 @@ monosyllabic words across 2 sentences must score `-1.84`. Run it in
 reading grade, not a comprehension test, and the rest of the design treats it
 that way (ADR-0002).
 
+Keeping Flesch-Kincaid here is a deliberate tradeoff. A learned readability
+model would likely correlate with comprehension better. The gate's value,
+though, is that a reviewer can compute a pure function by hand and cannot argue
+with the answer, and a learned model would trade that away for one more opaque
+score. Flesch-Kincaid's known weakness as a standalone quality measure
+(Tanprasert and Kauchak, 2021) never bites here, because the formula only ever
+decides surface grade, and the learned simplicity estimate and the calibrated
+judge cover what it misses. That division of labor, a deterministic check with
+a judge for the rest, is where the simplification-evaluation literature has
+converged (Zhang et al., 2024).
+
 ## Evaluation harness
 
 The harness benchmarks the gated loop against negative controls and scores
