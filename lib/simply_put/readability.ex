@@ -110,8 +110,11 @@ defmodule SimplyPut.Readability do
 
   defp sentences(text) do
     # Only break on a terminator followed by whitespace or end-of-string, so a
-    # decimal ("3.5 mg") or "e.g." mid-token doesn't inflate the sentence count
-    # and deflate the FK grade. Not a full abbreviation-aware splitter.
+    # decimal ("3.5 mg") keeps its period mid-token and doesn't inflate the
+    # sentence count. This is NOT abbreviation-aware: "e.g." or "Dr." before a
+    # space still splits, so abbreviation-heavy text over-counts sentences,
+    # which reads the FK grade as slightly easier than it is. Acceptable for a
+    # surface metric; a real fix would need an abbreviation guard.
     String.split(text, ~r/[.!?]+(?=\s|$)/, trim: true)
   end
 
