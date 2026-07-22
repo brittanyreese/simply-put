@@ -45,7 +45,8 @@ defmodule SimplyPut.LLM.OrderBiasedStub do
 end
 
 defmodule SimplyPut.JudgeValidationTest do
-  use ExUnit.Case, async: true
+  # async: false -- mutates global :llm adapter config (VM-wide).
+  use ExUnit.Case, async: false
 
   alias Ecto.Adapters.SQL.Sandbox
   alias SimplyPut.HumanLabel
