@@ -17,6 +17,10 @@ defmodule SimplyPut.MetricProvider.Bumblebee.Servings do
   @summac_checkpoint {:hf, "FacebookAI/roberta-large-mnli"}
   @bertscore_checkpoint {:hf, "FacebookAI/roberta-large"}
   @sle_checkpoint {:hf, "liamcripwell/sle-base"}
+  # sle-base ships no Bumblebee-loadable tokenizer of its own; it is a
+  # RoBERTa-base fine-tune, so load the stock base tokenizer instead. Same
+  # split-repo trick as :qa_extraction below.
+  @sle_tokenizer {:hf, "FacebookAI/roberta-base"}
   @question_gen_checkpoint {:hf, "iarfmoose/t5-base-question-generator"}
   @qa_extraction_checkpoint {:hf, "deepset/roberta-base-squad2"}
   @qa_extraction_tokenizer {:hf, "FacebookAI/roberta-base"}
@@ -126,7 +130,7 @@ defmodule SimplyPut.MetricProvider.Bumblebee.Servings do
 
   defp load_serving(:sle) do
     with {:ok, model} <- Bumblebee.load_model(@sle_checkpoint),
-         {:ok, tokenizer} <- Bumblebee.load_tokenizer(@sle_checkpoint) do
+         {:ok, tokenizer} <- Bumblebee.load_tokenizer(@sle_tokenizer) do
       {:ok, Bumblebee.Text.text_classification(model, tokenizer, scores_function: :none)}
     end
   end
