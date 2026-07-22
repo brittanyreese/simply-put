@@ -32,18 +32,20 @@ defmodule SimplyPut.HumanLabels.Import do
   @spec import(Path.t(), :asset | :plaba_trec) :: {:ok, non_neg_integer()} | {:error, term()}
   def import(path, source_dataset) when source_dataset in [:asset, :plaba_trec] do
     Repo.transaction(fn ->
-      path
-      |> File.read!()
-      |> CSV.parse_string()
-      |> Enum.reduce_while(0, fn row, count ->
-        case insert_row(row, source_dataset) do
-          {:ok, _label} -> {:cont, count + 1}
-          {:error, reason} -> {:halt, {:error, reason}}
-        end
-      end)
-      |> case do
+      rows = path |> File.read!() |> CSV.parse_string()
+
+      case insert_all_rows(rows, source_dataset) do
         {:error, reason} -> Repo.rollback(reason)
         count -> count
+      end
+    end)
+  end
+
+  defp insert_all_rows(rows, source_dataset) do
+    Enum.reduce_while(rows, 0, fn row, count ->
+      case insert_row(row, source_dataset) do
+        {:ok, _label} -> {:cont, count + 1}
+        {:error, reason} -> {:halt, {:error, reason}}
       end
     end)
   end
