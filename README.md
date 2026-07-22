@@ -18,7 +18,7 @@ mix deps.get && mix test
 
 That runs a real rewrite pipeline against the deterministic Flesch-Kincaid
 gate below, using a stub adapter (no network calls), and comes back green:
-1 doctest, 149 tests, 0 failures (8 excluded). Live-API tests are tagged
+148 tests, 0 failures (8 excluded). Live-API tests are tagged
 `:live` and excluded by default; run them with `mix test --only live` (see
 [Judge and the real adapter](#judge-and-the-real-adapter)). Tests that load a
 real embedding model are tagged `:bumblebee_models` and excluded the same way.
