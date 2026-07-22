@@ -30,17 +30,6 @@ defmodule SimplyPut.LLM.OpenRouterTest do
     assert rewritten != ""
   end
 
-  test "judge/2 returns a preserved/lost verdict with a rationale" do
-    original = "The cat sat on the mat."
-    rewrite = "The cat sat on the mat."
-
-    assert {:ok, %{verdict: verdict, rationale: rationale}} =
-             OpenRouter.judge(original, rewrite)
-
-    assert verdict in [:preserved, :lost]
-    assert is_binary(rationale)
-  end
-
   test "score/2 returns a validated multi-axis JudgeScore" do
     original = "The cat sat on the mat."
     rewrite = "The cat sat on the mat."

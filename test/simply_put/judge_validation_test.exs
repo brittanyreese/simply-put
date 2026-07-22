@@ -6,9 +6,6 @@ defmodule SimplyPut.LLM.VariableScoreStub do
   def rewrite(text, _opts), do: {:ok, text}
 
   @impl true
-  def judge(_original, _rewrite), do: {:ok, %{verdict: :preserved, rationale: ""}}
-
-  @impl true
   def score(_original, candidate) do
     scores = %{
       "cand-1" => %{simplicity: 4, fidelity: 5, fluency: 4},
@@ -27,9 +24,6 @@ defmodule SimplyPut.LLM.OrderBiasedStub do
 
   @impl true
   def rewrite(text, _opts), do: {:ok, text}
-
-  @impl true
-  def judge(_original, _rewrite), do: {:ok, %{verdict: :preserved, rationale: ""}}
 
   # Order-biased: scores higher whenever the SECOND argument is the
   # longer string, regardless of content -- simulates a judge that's

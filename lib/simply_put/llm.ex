@@ -12,8 +12,6 @@ defmodule SimplyPut.LLM do
   """
   @callback rewrite(text :: String.t(), opts :: keyword()) ::
               {:ok, String.t()} | {:error, term()}
-  @callback judge(original :: String.t(), rewrite :: String.t()) ::
-              {:ok, %{verdict: :preserved | :lost, rationale: String.t()}} | {:error, term()}
   @callback score(original :: String.t(), rewrite :: String.t()) ::
               {:ok, SimplyPut.JudgeScore.t()} | {:error, term()}
 
@@ -21,14 +19,10 @@ defmodule SimplyPut.LLM do
   def rewrite(text, opts \\ []), do: impl().rewrite(text, opts)
 
   @doc """
-  Binary judge, kept for backward compatibility. `score/2` (separate
-  simplicity/fidelity/fluency axes) is the multi-axis replacement used from
-  Phase E onward.
+  Multi-axis judge: simplicity, fidelity, and fluency on a 1-5 scale. The
+  loop gates on all three; the dashboard's meaning-preserved verdict reads
+  the fidelity axis.
   """
-  @spec judge(String.t(), String.t()) ::
-          {:ok, %{verdict: :preserved | :lost, rationale: String.t()}} | {:error, term()}
-  def judge(original, rewrite), do: impl().judge(original, rewrite)
-
   @spec score(String.t(), String.t()) :: {:ok, SimplyPut.JudgeScore.t()} | {:error, term()}
   def score(original, rewrite), do: impl().score(original, rewrite)
 

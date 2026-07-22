@@ -33,26 +33,6 @@ defmodule SimplyPut.LLM.OpenRouter do
   end
 
   @impl true
-  def judge(original, rewrite) do
-    prompt = """
-    Compare the ORIGINAL and REWRITE below. Reply with exactly one word on \
-    the first line, "preserved" or "lost", then a one-sentence rationale on \
-    the second line. "lost" means the rewrite dropped a fact, number, or \
-    defined term present in the original.
-
-    ORIGINAL:
-    #{original}
-
-    REWRITE:
-    #{rewrite}
-    """
-
-    with {:ok, content} <- request(config(:judge_model), prompt) do
-      {:ok, parse_verdict(content)}
-    end
-  end
-
-  @impl true
   def score(original, rewrite) do
     prompt = """
     Score the REWRITE against the ORIGINAL on three axes, each 1 (worst) to \
@@ -89,13 +69,6 @@ defmodule SimplyPut.LLM.OpenRouter do
       [json] -> {:ok, json}
       nil -> {:error, {:no_json_object, content}}
     end
-  end
-
-  defp parse_verdict(content) do
-    [first | rest] = content |> String.trim() |> String.split("\n", parts: 2)
-    verdict = if String.downcase(String.trim(first)) == "preserved", do: :preserved, else: :lost
-    rationale = rest |> List.first("") |> String.trim()
-    %{verdict: verdict, rationale: rationale}
   end
 
   defp request(model, prompt) do

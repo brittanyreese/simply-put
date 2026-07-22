@@ -22,13 +22,16 @@ Single-context repo. Domain vocabulary and decisions live here and in
 - **Held**: attempts ran out while the text was still over target. The
   result keeps the before/after numbers, so a caller can see how close it
   got instead of hitting a silent drop. Never call this "failed."
-- **Judge**: a second, separate model call (`LLM.judge/2`) that checks
-  whether a rewrite dropped a fact the original had. Opt-in
-  (`deps[:judge]`, default off). Produces a `verdict`, not a `score`: a
-  preserved/lost call, not a number.
-- **Verdict**: `%{fk_pass: boolean(), meaning_preserved: boolean()}`,
-  attached to a `Plainish.Result` only when the judge is enabled. Two
-  independent axes; the gate can pass while meaning is lost, or the reverse.
+- **Judge**: a model call (`LLM.score/2`) that rates a rewrite on three 1-5
+  axes (simplicity, fidelity, fluency). The gated loop scores each passing
+  attempt on all three; it produces a `score`, not a pass/fail. A different
+  model vendor from the rewriter on purpose (ADR-0003).
+- **Verdict**: `%{fk_pass: boolean(), meaning_preserved: boolean()}`, derived
+  from the judge score, not a second model call: `meaning_preserved` is the
+  fidelity axis clearing the pass threshold. Attached to a `Plainish.Result`
+  whenever a judge score is (the gated modes, once the structural gate
+  passes). Two independent axes; the gate can pass while meaning is lost, or
+  the reverse.
 - **Adapter seam**: `SimplyPut.LLM` behaviour, with `Stub` (deterministic,
   no network, default) and `OpenRouter` (real API, selected only when
   `OPENROUTER_API_KEY` is set) as the two implementations. Call it
