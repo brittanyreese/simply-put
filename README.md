@@ -158,8 +158,14 @@ The judge is calibrated against human ratings, not taken on faith. On 100
 ASSET pairs, quadratically-weighted kappa reaches 0.77 for fidelity and
 0.72 for fluency (substantial agreement) but only 0.22 for simplicity,
 a failed gate. The miss sits on the one axis the judge was never given:
-the deterministic FK gate owns simplicity (ADR-0002). Details in
-[`docs/results/2026-07-15-asset-judge-kappa.md`](docs/results/2026-07-15-asset-judge-kappa.md).
+the deterministic FK gate owns simplicity (ADR-0002). That fair number is
+also a low ceiling. On ASSET's raw 15-worker ratings, human-human agreement
+on simplicity is only 0.43 (Krippendorff alpha), against about 0.56 for the
+other two axes, so simplicity is the hardest axis for humans too and the
+judge's shortfall is a gap below 0.43, not below a perfect 1.0. Details in
+[`docs/results/2026-07-15-asset-judge-kappa.md`](docs/results/2026-07-15-asset-judge-kappa.md)
+and
+[`docs/results/2026-07-22-asset-human-human-agreement.md`](docs/results/2026-07-22-asset-human-human-agreement.md).
 
 ## Judge and the real adapter
 
