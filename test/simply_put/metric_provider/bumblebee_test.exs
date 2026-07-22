@@ -2,9 +2,11 @@ defmodule SimplyPut.MetricProvider.BumblebeeTest do
   @moduledoc """
   Exercises real Bumblebee checkpoints. Excluded by default (see
   `test/test_helper.exs`) -- run with `mix test --include bumblebee_models`
-  once network access to Hugging Face Hub is available. Unverified as of
-  this writing: the sandbox has no network egress, so these
-  checkpoints have never actually been loaded or scored against.
+  once network access to Hugging Face Hub is available. The `sle/1` test
+  has been run live (2026-07-21): `liamcripwell/sle-base` loads with the
+  `roberta-base` tokenizer and returns a numeric score, confirming the
+  tokenizer-source fix. The other checkpoints in this file are not yet
+  verified in a network-capable run.
   """
 
   use ExUnit.Case, async: false
