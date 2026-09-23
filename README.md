@@ -3,6 +3,7 @@
 <!-- vale ai-tells.RestatementMarkers = YES -->
 
 [![CI](https://github.com/brittanyreese/simply-put/actions/workflows/ci.yml/badge.svg)](https://github.com/brittanyreese/simply-put/actions/workflows/ci.yml)
+[![DOI](https://zenodo.org/badge/1288843278.svg)](https://doi.org/10.5281/zenodo.22925645)
 
 A plain-language readability rig. A rewrite loop lowers a text
 to a target reading grade, and a pure function decides whether the result
@@ -454,4 +455,6 @@ still open, as are the position-swap and verbosity-bias checks that
 
 ## License
 
-MIT. See `LICENSE`. Citation metadata in `CITATION.cff`.
+MIT. See `LICENSE`. Cite the archived release via its Zenodo DOI,
+[10.5281/zenodo.22925645](https://doi.org/10.5281/zenodo.22925645)
+(resolves to the latest version). Citation metadata is in `CITATION.cff`.
